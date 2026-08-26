@@ -1,12 +1,25 @@
-# Doc-Tool 文档处理工具
+# Doc-Tool
 
-基于 Spring Boot 3.2 + MyBatis + Thymeleaf 的在线文档处理平台，提供文档翻译、PDF 转换和 OCR 识别三大核心功能。
+[![Java](https://img.shields.io/badge/Java-17-orange)](https://www.oracle.com/java/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.5-green)](https://spring.io/projects/spring-boot)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+在线文档处理平台，提供文档翻译、PDF 转换、OCR 识别三大核心功能。纯后端渲染，开箱即用，无需额外前端构建。
 
 ## 功能特性
 
-- **文档翻译** — 上传 DOC/DOCX 文件，自动翻译全文为中文，保留原始排版（字号、加粗、居中、缩进等），翻译完成后自动清理评估水印
-- **PDF 转 DOC** — 将 PDF 文件提取文本内容并转换为可编辑的 Word 文档
-- **图片 OCR 转 DOC** — OCR 识别图片中的文字，生成 Word 文档，尽量还原原始版式。支持中英文识别，采用异步任务机制，前端轮询获取结果
+### 文档翻译
+上传 DOC/DOCX 文件，自动翻译全文内容，保留原始排版（字号、加粗、居中、缩进等）。翻译完成后自动清理评估水印。
+
+### PDF 转 DOCX
+将 PDF 文件提取文本内容并转换为可编辑的 Word 文档。
+
+### 图片 OCR 转 DOCX
+识别图片中的文字并生成 Word 文档，尽量还原原始版式。采用双引擎架构：
+- **RapidOCR**（默认）— PaddleOCR ONNX 模型，中文识别准确率高，纯本地运行，无需联网
+- **Tesseract**（回退）— 当 RapidOCR 加载失败时自动切换
+
+支持异步任务机制，前端轮询获取结果，不会阻塞页面。
 
 ## 技术栈
 
@@ -16,9 +29,8 @@
 | 持久层 | MyBatis 3.0.3, H2 嵌入式数据库 |
 | 模板引擎 | Thymeleaf |
 | 文档处理 | Apache POI 5.2.5, Apache PDFBox 3.0.2 |
-| OCR 引擎 | RapidOCR 0.0.7（PaddleOCR ONNX，中文识别准确率高，纯本地运行） |
-| OCR 回退 | Tess4J 5.11.0（Tesseract 封装） |
-| 工具库 | Lombok |
+| OCR 引擎 | RapidOCR 0.0.7 + Tess4J 5.11.0 |
+| 前端 | Bootstrap 5.3, 响应式布局 |
 | 构建工具 | Maven, 静态资源内容哈希（HashAssets） |
 
 ## 环境要求
@@ -28,54 +40,30 @@
 
 ## 快速开始
 
-### 1. OCR 引擎配置（图片转 DOC 功能）
-
-默认使用内置的 RapidOCR（PaddleOCR ONNX 模型，随 jar 打包，无需额外安装，支持 Windows/Linux x86_64）。
-
-若 RapidOCR 加载失败会自动回退到 Tesseract，需自行安装并通过环境变量配置数据路径：
+### 1. 克隆项目
 
 ```bash
-# Windows
-set TESSDATA_PATH=D:\Program Files\Tesseract-OCR\tessdata
-
-# Linux
-export TESSDATA_PATH=/usr/share/tessdata
+git clone https://github.com/talenxie/doc-tool.git
+cd doc-tool
 ```
 
-也可直接运行 `install-tesseract.bat`（Windows）安装 Tesseract。
-
-### 2. 编译运行
-
-**方式一：打包运行**
-
-```bash
-mvn clean package -DskipTests
-java -jar target\doc-tool-1.0.0.jar
-```
-
-**方式二：Maven 插件直接运行**
+### 2. 运行
 
 ```bash
 mvn spring-boot:run
 ```
 
-**方式三：使用启动脚本（Windows）**
+### 3. 访问
 
-```bash
-start.bat
-```
+打开浏览器访问 http://localhost:8081
 
-启动脚本会自动检查端口占用、编译项目并启动应用。
-
-### 3. 访问应用
-
-打开浏览器访问：http://localhost:8081
+> OCR 功能默认使用内置的 RapidOCR 引擎，无需额外安装。如需使用 Tesseract 作为回退，可运行 `install-tesseract.bat` 安装，并设置环境变量 `TESSDATA_PATH`。
 
 ## 页面说明
 
 | 路径 | 功能 |
 |------|------|
-| `/` | 首页，展示任务历史记录 |
+| `/` | 首页，展示功能入口和任务历史记录 |
 | `/translate` | 文档翻译页面 |
 | `/pdf-convert` | PDF 转 Word 页面 |
 | `/ocr` | 图片 OCR 识别页面 |
@@ -99,50 +87,53 @@ src/main/java/com/doctool/
 │   ├── TaskRecord.java              # 任务记录实体
 │   └── OcrLine.java                 # OCR 行数据模型
 ├── service/
-│   ├── TranslateService.java        # 翻译业务（Google Translate API）
+│   ├── TranslateService.java        # 翻译业务
 │   ├── PdfConvertService.java       # PDF 转换业务
-│   └── OcrService.java             # OCR 识别业务（RapidOCR + Tesseract）
+│   └── OcrService.java              # OCR 识别业务
 └── util/
-    ├── DocxUtils.java               # Word 文档工具（读写、翻译、水印清理、版式还原）
+    ├── DocxUtils.java               # Word 文档工具
     └── PdfUtils.java                # PDF 工具
 
-src/main/resources/
-├── application.yml                  # 应用配置
-├── schema.sql                       # 数据库初始化脚本
-├── static/                          # 静态资源（CSS/JS）
-└── templates/                       # Thymeleaf 页面模板
-    ├── index.html
-    ├── translate.html
-    ├── pdf-convert.html
-    └── ocr.html
-
 build-tools/
-└── HashAssets.java                  # 构建时为静态资源生成内容哈希，解决浏览器缓存问题
+└── HashAssets.java                  # 构建时为静态资源生成内容哈希
+```
+
+## 打包部署
+
+### WAR 包部署（默认）
+
+```bash
+mvn clean package -DskipTests
+# 部署 target/doc-tool-1.0.0.war 到 Tomcat 10+
+```
+
+### JAR 包运行
+
+将 `pom.xml` 中 `<packaging>war</packaging>` 改为 `<packaging>jar</packaging>`，移除 Tomcat provided 依赖后：
+
+```bash
+mvn clean package -DskipTests
+java -jar target/doc-tool-1.0.0.jar
+```
+
+### 生产环境
+
+通过 `-Pprod` 激活生产环境配置：
+
+```bash
+mvn clean package -Pprod -DskipTests
 ```
 
 ## 扩展说明
 
 ### 接入翻译 API
 
-当前默认使用 Google Translate（`translate.googleapis.com`），通过 `application.yml` 中的 `translate.api-url` 配置。
+当前默认使用 Google Translate，可通过 `TranslateService.java` 中的 `callTranslateApi` 方法替换为百度翻译、DeepL、有道等服务。
 
-可替换为其他翻译服务，修改 `TranslateService.java` 中的 `callTranslateApi` 方法即可：
-- 百度翻译 API
-- DeepL API
-- 有道翻译 API
+### 切换数据库
 
-### 翻译水印清理
+默认使用 H2 嵌入式数据库，数据文件保存在 `./data/doctool.mv.db`。如需切换到 MySQL，修改 `application.yml` 中的数据源配置即可。
 
-翻译完成后会自动清理文档中的评估警告水印（如 Spire 评估版生成的红色水印文字），可通过 `translate.remove-red-watermark` 配置项关闭。
+## License
 
-### 数据库
-
-默认使用 H2 嵌入式数据库，数据文件保存在 `./data/doctool.mv.db`，支持通过 `/h2-console` 在线管理。
-
-如需切换到 MySQL，修改 `application.yml` 中的数据源配置即可。
-
-## 打包部署
-
-项目默认打包为 WAR 格式，可部署到外部 Tomcat 10+ 容器。如需改为 JAR 打包，将 `pom.xml` 中的 `<packaging>war</packaging>` 改为 `<packaging>jar</packaging>` 并移除 Tomcat provided 依赖。
-
-支持 `dev` 和 `prod` 两个 Maven Profile，通过 `-Pprod` 激活生产环境配置。
+[MIT](LICENSE)
