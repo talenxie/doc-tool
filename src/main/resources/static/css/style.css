@@ -1,0 +1,528 @@
+body {
+    background-color: #f5f5f5;
+    min-height: 100vh;
+}
+
+/* ===== 基础样式 ===== */
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.3rem;
+}
+
+.feature-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    cursor: pointer;
+}
+
+.feature-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.feature-card .card-body {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.feature-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 0.75rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: white;
+    flex-shrink: 0;
+}
+
+.feature-card .card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 0.3rem;
+}
+
+.feature-card .card-text {
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.45;
+    margin-bottom: 0.75rem;
+}
+
+.btn-enter {
+    display: inline-block;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    padding: 0.45rem 1.2rem;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    font-weight: 600;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.badge {
+    font-weight: 500;
+    padding: 0.4em 0.8em;
+}
+
+.btn {
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+.alert {
+    border: none;
+    border-radius: 8px;
+}
+
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* ===== 自定义文件上传区域 ===== */
+.file-upload-area {
+    position: relative;
+    border: 2px dashed #c5cdd8;
+    border-radius: 12px;
+    padding: 2rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+    background-color: #fafbfc;
+}
+
+.file-upload-area:hover,
+.file-upload-area.dragover {
+    border-color: #667eea;
+    background-color: #f0f2ff;
+}
+
+.file-upload-area input[type="file"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.file-upload-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 0.75rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.file-upload-area .upload-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.25rem;
+    position: relative;
+    z-index: 1;
+}
+
+.file-upload-area .upload-hint {
+    font-size: 0.85rem;
+    color: #888;
+    position: relative;
+    z-index: 1;
+}
+
+.file-upload-area .file-selected {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: #333;
+    position: relative;
+    z-index: 1;
+}
+
+.file-upload-area.has-file .upload-label,
+.file-upload-area.has-file .upload-hint {
+    display: none;
+}
+
+.file-upload-area.has-file .file-selected {
+    display: flex;
+}
+
+/* ===== 手机端卡片列表（处理记录） ===== */
+.records-mobile-list {
+    display: none;
+}
+
+.record-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 0.75rem 0.85rem;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.record-card-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.record-card-icon.type-translate {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.record-card-icon.type-pdf {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.record-card-icon.type-ocr {
+    background: linear-gradient(135deg, #f0ad4e, #e67e22);
+}
+
+.record-card-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.record-card-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.record-card-meta {
+    font-size: 0.75rem;
+    color: #999;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.record-card-status {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.1em 0.45em;
+    border-radius: 4px;
+}
+
+.record-card-status.status-success {
+    background: #e6f9ed;
+    color: #1a8a4a;
+}
+
+.record-card-status.status-failed {
+    background: #fde8e8;
+    color: #c0392b;
+}
+
+.record-card-status.status-processing {
+    background: #e8f4fd;
+    color: #2980b9;
+}
+
+.record-card-status.status-pending {
+    background: #f0f0f0;
+    color: #888;
+}
+
+.record-card-action {
+    flex-shrink: 0;
+}
+
+.record-card-action .btn {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+}
+
+.record-card-error {
+    font-size: 0.72rem;
+    color: #c0392b;
+    margin-top: 2px;
+    word-break: break-all;
+}
+
+/* ===== 桌面端隐藏手机列表 ===== */
+@media (min-width: 768px) {
+    .records-mobile-list {
+        display: none !important;
+    }
+}
+
+/* ===================================================
+   手机端完整适配 (max-width: 767.98px)
+   =================================================== */
+@media (max-width: 767.98px) {
+
+    /* --- 全局 --- */
+    body {
+        font-size: 14px;
+    }
+
+    /* 减小 Bootstrap container 的左右内边距 */
+    .container {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    /* 页面底部留白 */
+    .container.mt-3 {
+        padding-bottom: 1.5rem;
+    }
+
+    /* --- 导航栏 --- */
+    .navbar {
+        padding: 0.4rem 0;
+    }
+
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
+
+    .navbar-collapse {
+        background: rgba(0,0,0,0.15);
+        border-radius: 8px;
+        margin-top: 0.4rem;
+        padding: 0.25rem 0.75rem;
+    }
+
+    .navbar-nav .nav-link {
+        padding: 0.6rem 0;
+        font-size: 0.95rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .navbar-nav .nav-link:last-child {
+        border-bottom: none;
+    }
+
+    /* --- 功能卡片：3列网格，图标+标题 --- */
+    .feature-card .card-body {
+        padding: 0.75rem 0.4rem;
+    }
+
+    .feature-icon {
+        width: 42px;
+        height: 42px;
+        font-size: 0.85rem;
+        margin-bottom: 0.4rem;
+        border-radius: 12px;
+    }
+
+    .feature-card .card-title {
+        font-size: 0.8rem;
+        margin-bottom: 0;
+    }
+
+    /* 手机端隐藏描述文字和按钮 */
+    .feature-card .card-text {
+        display: none;
+    }
+
+    .btn-enter {
+        display: none;
+    }
+
+    /* 功能卡片列间距 */
+    .row > [class*="col-"] {
+        padding-left: 4px;
+        padding-right: 4px;
+    }
+
+    .row {
+        margin-left: -4px;
+        margin-right: -4px;
+    }
+
+    /* --- 隐藏桌面端表格，显示手机卡片列表 --- */
+    .records-table-wrapper {
+        display: none;
+    }
+
+    .records-mobile-list {
+        display: block !important;
+    }
+
+    /* --- 文件上传子页面通用 --- */
+    .card-body {
+        padding: 0.85rem;
+    }
+
+    .card-header {
+        padding: 0.7rem 0.85rem;
+    }
+
+    .card-header h4 {
+        font-size: 1rem;
+        margin-bottom: 0;
+    }
+
+    /* 提交按钮 */
+    #submitBtn {
+        width: 100%;
+        padding: 0.65rem 1rem;
+        font-size: 0.95rem;
+        border-radius: 8px;
+        min-height: 44px;
+    }
+
+    #downloadLink {
+        width: 100%;
+        padding: 0.65rem 1rem;
+        font-size: 0.95rem;
+        border-radius: 8px;
+        min-height: 44px;
+    }
+
+    /* 表单标签 */
+    .form-label {
+        font-size: 0.88rem;
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+    }
+
+    /* 提示信息 */
+    .form-text {
+        font-size: 0.78rem;
+    }
+
+    .alert {
+        padding: 0.65rem 0.85rem;
+        font-size: 0.82rem;
+    }
+
+    .alert-info {
+        font-size: 0.8rem;
+    }
+
+    /* 表单内间距收紧 */
+    .mb-3 {
+        margin-bottom: 0.7rem !important;
+    }
+
+    /* 结果/错误/加载区域 */
+    #result, #error, #loading {
+        margin-top: 0.75rem !important;
+    }
+
+    #result .alert h5,
+    #error .alert h5 {
+        font-size: 0.95rem;
+        margin-bottom: 0.3rem;
+    }
+
+    #result .alert p,
+    #error .alert p {
+        font-size: 0.82rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* 加载动画 */
+    #loading .spinner-border {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    #loading p {
+        font-size: 0.88rem;
+    }
+
+    /* --- 文件上传区域 --- */
+    .file-upload-area {
+        padding: 1.2rem 0.75rem;
+        border-radius: 10px;
+    }
+
+    .file-upload-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .file-upload-area .upload-label {
+        font-size: 0.88rem;
+    }
+
+    .file-upload-area .upload-hint {
+        font-size: 0.78rem;
+    }
+
+    .file-upload-area .file-selected {
+        font-size: 0.85rem;
+        gap: 0.35rem;
+    }
+
+    /* --- 桌面端表格相关（手机端隐藏但保留以防万一） --- */
+    .table td {
+        word-break: break-all;
+        vertical-align: middle;
+    }
+
+    .table .btn-sm {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+        min-height: 32px;
+    }
+
+    h4 {
+        font-size: 1.05rem;
+    }
+
+    h5 {
+        font-size: 1rem;
+    }
+}
