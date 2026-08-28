@@ -22,6 +22,11 @@ public class PdfConvertController {
     @PostMapping
     public ResponseEntity<?> convert(@RequestParam("file") MultipartFile file) {
         try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(Map.of("status", "FAILED", "errorMessage", "文件为空，请选择有效的文件"));
+            }
             String originalFilename = file.getOriginalFilename();
             byte[] fileBytes = file.getBytes();
 

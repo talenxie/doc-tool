@@ -6,6 +6,10 @@
 
 在线文档处理平台，提供文档翻译、PDF 转换、OCR 识别三大核心功能。纯后端渲染，开箱即用，无需额外前端构建。
 
+<div align="center">
+<img src="assets/preview.png" width="720"/>
+</div>
+
 ## 功能特性
 
 ### 文档翻译

@@ -34,6 +34,10 @@ mybatis:
 
 # 翻译设置
 translate:
+  # 翻译引擎：google（免费，默认） 或 microsoft（需填写 api-key）
+  provider: ${TRANSLATE_PROVIDER:google}
+  # Microsoft Translator API Key（Azure 免费申请，每月 200 万字符）
+  api-key: ${TRANSLATE_API_KEY:}
   # 翻译完成后是否清理红字水印（如原文档自带的 Spire 评估警告），默认开启
   remove-red-watermark: true
 

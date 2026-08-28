@@ -364,48 +364,69 @@ public class DocxUtils {
      * 只翻译正文段落和表格，不处理页眉页脚（避免水印和重复内容问题）
      */
     public static void translateInPlace(XWPFDocument doc, Function<String, String> translator) {
-        // 只翻译正文段落
-        for (XWPFParagraph para : doc.getParagraphs()) {
-            translateParagraph(para, translator);
+        List<XWPFParagraph> paragraphs = doc.getParagraphs();
+        List<XWPFTable> tables = doc.getTables();
+
+        // 收集需要翻译的段落及其原文
+        List<XWPFParagraph> translatableParas = new ArrayList<>();
+        List<String> originalTexts = new ArrayList<>();
+        for (XWPFParagraph para : paragraphs) {
+            String text = getParagraphText(para);
+            if (text != null) {
+                translatableParas.add(para);
+                originalTexts.add(text);
+            }
         }
-        // 只翻译正文表格
-        for (XWPFTable table : doc.getTables()) {
+
+        if (originalTexts.isEmpty()) {
+            return;
+        }
+
+        // 批量翻译：用换行符拼接，一次 API 调用
+        String joined = String.join("\n", originalTexts);
+        String translatedJoined = translator.apply(joined);
+        String[] translatedParts = translatedJoined.split("\n", -1);
+
+        // 数量匹配则逐段写回，不匹配则跳过（避免错位）
+        if (translatedParts.length == translatableParas.size()) {
+            for (int i = 0; i < translatableParas.size(); i++) {
+                String translated = translatedParts[i].trim();
+                if (!translated.isEmpty() && !translated.equals(originalTexts.get(i))) {
+                    writeTranslatedText(translatableParas.get(i), translated);
+                }
+            }
+        }
+
+        // 表格逐单元格翻译（量少，单次调用）
+        for (XWPFTable table : tables) {
             translateTable(table, translator);
         }
-        // 页眉页脚不翻译，避免水印和重复内容
     }
 
-    private static void translateParagraph(XWPFParagraph para, Function<String, String> translator) {
+    private static String getParagraphText(XWPFParagraph para) {
+        List<XWPFRun> runs = para.getRuns();
+        if (runs == null || runs.isEmpty()) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (XWPFRun run : runs) {
+            String text = run.text();
+            if (text != null) {
+                sb.append(text);
+            }
+        }
+        String text = sb.toString().trim();
+        if (text.isEmpty() || text.length() <= 2) {
+            return null;
+        }
+        return sb.toString();
+    }
+
+    private static void writeTranslatedText(XWPFParagraph para, String translated) {
         List<XWPFRun> runs = para.getRuns();
         if (runs == null || runs.isEmpty()) {
             return;
         }
-
-        // 汇总整段文字
-        StringBuilder fullText = new StringBuilder();
-        for (XWPFRun run : runs) {
-            String text = run.text();
-            if (text != null) {
-                fullText.append(text);
-            }
-        }
-
-        String text = fullText.toString().trim();
-        // 跳过空段落、纯空白、单字符（可能是装饰符号）
-        if (text.isEmpty() || text.length() <= 2) {
-            return;
-        }
-
-        // 翻译整段文字
-        String translated = translator.apply(fullText.toString());
-        if (translated == null || translated.equals(fullText.toString())) {
-            return;
-        }
-
-        // 整段译文写入第一个有文字的 run，其余 run 只清空文本节点。
-        // 不按比例切回多个 run —— 中英长度差异大，硬切会把文字切碎，
-        // 且 setText(x, 0) 只替换第一个 <w:t>，多余的 <w:t> 会残留原文。
-        // run 本身和格式保留，<w:drawing> 图片等元素不受影响。
         boolean written = false;
         for (XWPFRun run : runs) {
             String runText = run.text();
@@ -431,7 +452,13 @@ public class DocxUtils {
         for (XWPFTableRow row : table.getRows()) {
             for (XWPFTableCell cell : row.getTableCells()) {
                 for (XWPFParagraph para : cell.getParagraphs()) {
-                    translateParagraph(para, translator);
+                    String text = getParagraphText(para);
+                    if (text != null) {
+                        String translated = translator.apply(text);
+                        if (translated != null && !translated.equals(text)) {
+                            writeTranslatedText(para, translated);
+                        }
+                    }
                 }
             }
         }

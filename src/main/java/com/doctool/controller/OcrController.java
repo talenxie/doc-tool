@@ -24,6 +24,12 @@ public class OcrController {
     @PostMapping
     public Object convert(@RequestParam("file") MultipartFile file) {
         try {
+            if (file.isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("status", "FAILED");
+                error.put("errorMessage", "文件为空，请选择有效的文件");
+                return error;
+            }
             TaskRecord record = ocrService.submit(file);
             Map<String, Object> resp = new HashMap<>();
             resp.put("status", "PROCESSING");
