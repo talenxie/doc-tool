@@ -223,6 +223,10 @@ body {
     background: linear-gradient(135deg, #f0ad4e, #e67e22);
 }
 
+.record-card-icon.type-anim {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
 .record-card-body {
     flex: 1;
     min-width: 0;
