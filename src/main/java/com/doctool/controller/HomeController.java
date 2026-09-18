@@ -43,9 +43,4 @@ public class HomeController {
     public String ocrPage() {
         return "ocr";
     }
-
-    @GetMapping("/anim-to-video")
-    public String animToVideoPage() {
-        return "anim-to-video";
-    }
 }

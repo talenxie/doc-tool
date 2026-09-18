@@ -67,12 +67,6 @@ public class TranslateService {
             doc = DocxUtils.readDocx(is);
         }
 
-        // 检查文档是否包含非中文文本
-        String fullText = DocxUtils.extractText(doc);
-        if (!containsTranslatableText(fullText)) {
-            throw new RuntimeException("文档中没有需要翻译的外文内容");
-        }
-
         failedBatchCount.set(0);
         totalBatchCount.set(0);
 
@@ -276,29 +270,5 @@ public class TranslateService {
 
     private static String stripInvisibleChars(String s) {
         return s.replaceAll("[\\u200B\\u200C\\u200D\\u200E\\u200F\\uFEFF\\u00AD]", "");
-    }
-
-    /** 检查文本是否包含可翻译的非中文内容 */
-    private static boolean containsTranslatableText(String text) {
-        if (text == null || text.trim().isEmpty()) {
-            return false;
-        }
-        for (char c : text.toCharArray()) {
-            // 跳过空白和标点
-            if (Character.isWhitespace(c) || Character.getType(c) == Character.DASH_PUNCTUATION
-                    || Character.getType(c) == Character.OTHER_PUNCTUATION) {
-                continue;
-            }
-            // 如果是拉丁字母、日文假名、韩文等非中文字符，认为可翻译
-            if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
-                    || (c >= '0' && c <= '9')
-                    || (c >= '\u3040' && c <= '\u30FF')  // 日文假名
-                    || (c >= '\uAC00' && c <= '\uD7AF')  // 韩文
-                    || (c >= '\u0400' && c <= '\u04FF')   // 西里尔字母
-                    || (c >= '\u00C0' && c <= '\u024F')) { // 拉丁扩展
-                return true;
-            }
-        }
-        return false;
     }
 }

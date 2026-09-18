@@ -100,18 +100,6 @@ public class OcrService {
             List<OcrLine> lines = recognize(tempPath.toFile(), image);
             log.info("OCR 识别完成，耗时 {}ms", System.currentTimeMillis() - t0);
 
-            // 检查是否有有效文字
-            boolean hasText = false;
-            for (OcrLine line : lines) {
-                if (line.text() != null && !line.text().trim().isEmpty()) {
-                    hasText = true;
-                    break;
-                }
-            }
-            if (!hasText) {
-                throw new RuntimeException("图片中未识别到文字内容");
-            }
-
             String baseName = originalFilename.contains(".")
                 ? originalFilename.substring(0, originalFilename.lastIndexOf('.'))
                 : originalFilename;
