@@ -14,7 +14,6 @@ import java.util.zip.ZipOutputStream;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AnimToVideoService {
 
     private static final Set<String> SUPPORTED_EXTS = Set.of("gif", "webp");
