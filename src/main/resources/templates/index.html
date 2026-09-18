@@ -21,12 +21,6 @@
                     <a class="nav-link" href="/translate">全文翻译</a>
                     <a class="nav-link" href="/pdf-convert">PDF转DOCX</a>
                     <a class="nav-link" href="/ocr">图片转DOCX</a>
-                    <a class="nav-link" href="/anim-to-video">动态图转视频</a>
-                </div>
-                <div class="navbar-nav ms-auto">
-                    <form th:action="@{/logout}" method="post" class="d-inline">
-                        <button type="submit" class="btn btn-outline-light btn-sm">退出登录</button>
-                    </form>
                 </div>
             </div>
         </div>
@@ -35,7 +29,7 @@
     <div class="container mt-3 mt-md-4">
         <!-- 功能入口卡片 -->
         <div class="row">
-            <div class="col-6 col-md-3 mb-2 mb-md-4">
+            <div class="col-4 mb-2 mb-md-4">
                 <a href="/translate" class="text-decoration-none">
                     <div class="card feature-card h-100">
                         <div class="card-body">
@@ -47,7 +41,7 @@
                     </div>
                 </a>
             </div>
-            <div class="col-6 col-md-3 mb-2 mb-md-4">
+            <div class="col-4 mb-2 mb-md-4">
                 <a href="/pdf-convert" class="text-decoration-none">
                     <div class="card feature-card h-100">
                         <div class="card-body">
@@ -59,7 +53,7 @@
                     </div>
                 </a>
             </div>
-            <div class="col-6 col-md-3 mb-2 mb-md-4">
+            <div class="col-4 mb-2 mb-md-4">
                 <a href="/ocr" class="text-decoration-none">
                     <div class="card feature-card h-100">
                         <div class="card-body">
@@ -67,18 +61,6 @@
                             <h5 class="card-title">图片转DOCX</h5>
                             <p class="card-text">识别图片文字生成DOCX文档</p>
                             <span class="btn btn-warning btn-enter">开始识别</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-6 col-md-3 mb-2 mb-md-4">
-                <a href="/anim-to-video" class="text-decoration-none">
-                    <div class="card feature-card h-100">
-                        <div class="card-body">
-                            <div class="feature-icon" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">GIF</div>
-                            <h5 class="card-title">动态图转视频</h5>
-                            <p class="card-text">GIF/WebP动态图批量转为视频</p>
-                            <span class="btn btn-danger btn-enter">开始转换</span>
                         </div>
                     </div>
                 </a>
@@ -109,7 +91,6 @@
                                 <span th:if="${record.taskType == 'TRANSLATE'}" class="badge bg-primary">翻译</span>
                                 <span th:if="${record.taskType == 'PDF_CONVERT'}" class="badge bg-success">PDF转换</span>
                                 <span th:if="${record.taskType == 'OCR'}" class="badge bg-warning">OCR识别</span>
-                                <span th:if="${record.taskType == 'ANIM_TO_VIDEO'}" class="badge" style="background:#e74c3c;">动态图转视频</span>
                             </td>
                             <td class="text-break" th:text="${record.originalFilename}"></td>
                             <td>
@@ -133,14 +114,12 @@
                 <div th:if="${record.taskType == 'TRANSLATE'}" class="record-card-icon type-translate">译</div>
                 <div th:if="${record.taskType == 'PDF_CONVERT'}" class="record-card-icon type-pdf">PDF</div>
                 <div th:if="${record.taskType == 'OCR'}" class="record-card-icon type-ocr">OCR</div>
-                <div th:if="${record.taskType == 'ANIM_TO_VIDEO'}" class="record-card-icon type-anim">GIF</div>
                 <div class="record-card-body">
                     <div class="record-card-name" th:text="${record.originalFilename}"></div>
                     <div class="record-card-meta">
                         <span th:if="${record.taskType == 'TRANSLATE'}">翻译</span>
                         <span th:if="${record.taskType == 'PDF_CONVERT'}">PDF转换</span>
                         <span th:if="${record.taskType == 'OCR'}">OCR识别</span>
-                        <span th:if="${record.taskType == 'ANIM_TO_VIDEO'}">动态图转视频</span>
                         <span th:if="${record.status == 'SUCCESS'}" class="record-card-status status-success">成功</span>
                         <span th:if="${record.status == 'FAILED'}" class="record-card-status status-failed">失败</span>
                         <span th:if="${record.status == 'PROCESSING'}" class="record-card-status status-processing">处理中</span>
