@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>动态图转视频 - 文档处理工具</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+    <style>
+        .preview-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 0.5rem;
+        }
+        .preview-item {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #e0e0e0;
+        }
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .preview-item .preview-name {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            font-size: 0.55rem;
+            padding: 1px 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .file-count-badge {
+            display: inline-block;
+            background: #667eea;
+            color: #fff;
+            border-radius: 12px;
+            padding: 0.15em 0.6em;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 0.4rem;
+        }
+        .mode-switch {
+            display: flex;
+            gap: 12px;
+        }
+        .mode-btn {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            background: #fff;
+            color: #666;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .mode-btn .mode-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f5f5f5;
+            transition: all 0.3s;
+        }
+        .mode-btn.active {
+            border-color: #e74c3c;
+            color: #e74c3c;
+            background: #fff5f5;
+        }
+        .mode-btn.active .mode-icon {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: #fff;
+        }
+        .mode-btn:hover:not(.active) {
+            border-color: #e74c3c;
+            color: #e74c3c;
+            background: #fff5f5;
+        }
+        .mode-btn:hover:not(.active) .mode-icon {
+            background: #fee;
+        }
+        .format-filter {
+            display: flex;
+            gap: 10px;
+        }
+        .format-tag {
+            display: none;
+        }
+        .format-tag + label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.88rem;
+            color: #666;
+            background: #fff;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .format-tag + label:hover {
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+        .format-tag:checked + label {
+            border-color: #e74c3c;
+            background: #e74c3c;
+            color: #fff;
+        }
+        .folder-input-group {
+            display: flex;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .folder-input-group:focus-within {
+            border-color: #e74c3c;
+        }
+        .folder-input-group .form-control {
+            border: none;
+            border-radius: 0;
+            padding: 12px 16px;
+            font-size: 0.9rem;
+        }
+        .folder-input-group .form-control:focus {
+            box-shadow: none;
+        }
+        .folder-input-group .btn-folder {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: #fff;
+            border: none;
+            padding: 12px 20px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .folder-input-group .btn-folder:hover {
+            background: linear-gradient(135deg, #c0392b, #a93226);
+        }
+        .progress-bar-container {
+            display: none;
+            margin-top: 1rem;
+        }
+        .progress-bar-container .progress {
+            height: 24px;
+            border-radius: 12px;
+        }
+        .batch-progress-text {
+            font-size: 0.85rem;
+            color: #555;
+            margin-top: 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">文档处理工具</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#navbarNav" aria-controls="navbarNav"
+                    aria-expanded="false" aria-label="切换导航">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav">
+                    <a class="nav-link" href="/translate">全文翻译</a>
+                    <a class="nav-link" href="/pdf-convert">PDF转DOCX</a>
+                    <a class="nav-link" href="/ocr">图片转DOCX</a>
+                    <a class="nav-link active" href="/anim-to-video">动态图转视频</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-3 mt-md-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header" style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff;">
+                        <h4 class="mb-0">动态图转视频</h4>
+                    </div>
+                    <div class="card-body">
+                        <!-- 模式切换 -->
+                        <div class="mb-3">
+                            <div class="mode-switch">
+                                <button type="button" class="mode-btn active" id="modeFileBtn" onclick="switchMode('file')">
+                                    <div class="mode-icon">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                    </div>
+                                    选择文件
+                                </button>
+                                <button type="button" class="mode-btn" id="modeFolderBtn" onclick="switchMode('folder')">
+                                    <div class="mode-icon">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                                    </div>
+                                    选择文件夹
+                                </button>
+                            </div>
+                        </div>
+
+                        <form id="convertForm">
+                            <!-- 文件模式 -->
+                            <div id="fileModeArea">
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <span id="fileLabel">选择动态图片</span>
+                                        <span id="fileCount"></span>
+                                    </label>
+                                    <div class="file-upload-area" id="uploadArea">
+                                        <input type="file" id="fileInput" name="files" accept=".gif,.webp" multiple>
+                                        <div class="file-upload-icon" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                        </div>
+                                        <div class="upload-label" id="uploadLabel">点击或拖拽上传动态图片</div>
+                                        <div class="upload-hint" id="uploadHint">支持 GIF、WebP 格式的动态图片，可多选</div>
+                                        <div class="file-selected" id="fileSelected">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>
+                                            <span id="fileName"></span>
+                                        </div>
+                                    </div>
+                                    <div id="previewGrid" class="preview-grid"></div>
+                                </div>
+                            </div>
+
+                            <!-- 文件夹模式 -->
+                            <div id="folderModeArea" style="display: none;">
+                                <div class="mb-3">
+                                    <label class="form-label">选择文件夹</label>
+                                    <div class="folder-input-group">
+                                        <input type="text" class="form-control" id="folderPath" placeholder="点击右侧按钮选择文件夹" readonly>
+                                        <button class="btn-folder" type="button" id="pickFolderBtn">选择文件夹</button>
+                                    </div>
+                                    <div class="form-text" id="folderInfo"></div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">动态图格式过滤</label>
+                                    <div class="format-filter">
+                                        <div>
+                                            <input type="checkbox" class="format-tag" id="filterGif" value="gif" checked>
+                                            <label for="filterGif">GIF</label>
+                                        </div>
+                                        <div>
+                                            <input type="checkbox" class="format-tag" id="filterWebp" value="webp" checked>
+                                            <label for="filterWebp">WebP</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">输出格式</label>
+                                <select class="form-select" id="outputFormat" name="format">
+                                    <option value="mp4" selected>MP4 (H.264)</option>
+                                    <option value="avi">AVI (MPEG-4)</option>
+                                    <option value="webm">WebM (VP9)</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="alert alert-info" style="font-size:0.88rem;" id="hintAlert">
+                                    <strong>提示：</strong>需要安装 FFmpeg 才能使用此功能。
+                                    请确保 FFmpeg 已安装并在系统 PATH 中。
+                                    <br>支持批量转换，多个文件将打包为 ZIP 下载。
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-danger" id="submitBtn">
+                                开始转换
+                            </button>
+                        </form>
+
+                        <div id="result" class="mt-4" style="display: none;">
+                            <div class="alert alert-success">
+                                <h5>转换完成!</h5>
+                                <p id="resultText"></p>
+                            </div>
+                        </div>
+
+                        <div id="error" class="mt-4" style="display: none;">
+                            <div class="alert alert-danger">
+                                <h5>转换失败</h5>
+                                <p id="errorText"></p>
+                            </div>
+                        </div>
+
+                        <div id="loading" class="mt-4" style="display: none;">
+                            <div class="text-center">
+                                <div class="spinner-border text-danger" role="status">
+                                    <span class="visually-hidden">处理中...</span>
+                                </div>
+                                <p class="mt-2" id="loadingText">正在转换中，请稍候...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentMode = 'file';
+        let selectedFiles = [];
+        let directoryHandle = null;
+
+        function getAllowedExts() {
+            const exts = [];
+            if (document.getElementById('filterGif').checked) exts.push('.gif');
+            if (document.getElementById('filterWebp').checked) exts.push('.webp');
+            return exts;
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            const modeFileBtn = document.getElementById('modeFileBtn');
+            const modeFolderBtn = document.getElementById('modeFolderBtn');
+            const fileModeArea = document.getElementById('fileModeArea');
+            const folderModeArea = document.getElementById('folderModeArea');
+            const hintAlert = document.getElementById('hintAlert');
+
+            if (mode === 'folder') {
+                modeFileBtn.classList.remove('active');
+                modeFolderBtn.classList.add('active');
+                fileModeArea.style.display = 'none';
+                folderModeArea.style.display = 'block';
+                hintAlert.innerHTML = '<strong>提示：</strong>需要安装 FFmpeg。选择文件夹后，转换结果将保存到该文件夹下的 converted_video 子目录。';
+            } else {
+                modeFileBtn.classList.add('active');
+                modeFolderBtn.classList.remove('active');
+                fileModeArea.style.display = 'block';
+                folderModeArea.style.display = 'none';
+                hintAlert.innerHTML = '<strong>提示：</strong>需要安装 FFmpeg 才能使用此功能。请确保 FFmpeg 已安装并在系统 PATH 中。<br>支持批量转换，多个文件将打包为 ZIP 下载。';
+            }
+
+            selectedFiles = [];
+            directoryHandle = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('folderPath').value = '';
+            document.getElementById('folderInfo').textContent = '';
+            updateFileDisplay();
+        }
+
+        // 文件夹选择器
+        document.getElementById('pickFolderBtn').addEventListener('click', async function() {
+            try {
+                directoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+
+                // 检查权限
+                const perm = await directoryHandle.requestPermission({ mode: 'readwrite' });
+                if (perm !== 'granted') {
+                    alert('需要文件夹读写权限');
+                    directoryHandle = null;
+                    return;
+                }
+
+                document.getElementById('folderPath').value = directoryHandle.name;
+
+                // 统计文件夹中的动态图文件
+                const allowedExts = getAllowedExts();
+                let count = 0;
+                for await (const entry of directoryHandle.values()) {
+                    if (entry.kind === 'file') {
+                        const name = entry.name.toLowerCase();
+                        if (allowedExts.some(ext => name.endsWith(ext))) {
+                            count++;
+                        }
+                    }
+                }
+                const extNames = allowedExts.map(e => e.replace('.', '').toUpperCase()).join('、');
+                document.getElementById('folderInfo').textContent = '已选择文件夹，包含 ' + count + ' 个 ' + extNames + ' 文件';
+                selectedFiles = count;
+            } catch (e) {
+                if (e.name !== 'AbortError') {
+                    alert('无法访问文件夹: ' + e.message);
+                }
+            }
+        });
+
+        // 文件选择
+        document.getElementById('fileInput').addEventListener('change', function() {
+            const files = Array.from(this.files);
+            selectedFiles = files.filter(f => {
+                const name = f.name.toLowerCase();
+                return name.endsWith('.gif') || name.endsWith('.webp');
+            });
+
+            if (selectedFiles.length === 0 && files.length > 0) {
+                alert('所选文件夹中没有找到 GIF 或 WebP 格式的动态图片');
+                this.value = '';
+                return;
+            }
+
+            updateFileDisplay();
+        });
+
+        function updateFileDisplay() {
+            const area = document.getElementById('uploadArea');
+            const fileNameEl = document.getElementById('fileName');
+            const fileCountEl = document.getElementById('fileCount');
+            const previewGrid = document.getElementById('previewGrid');
+
+            if (Array.isArray(selectedFiles) && selectedFiles.length > 0) {
+                area.classList.add('has-file');
+                if (selectedFiles.length === 1) {
+                    fileNameEl.textContent = selectedFiles[0].name;
+                } else {
+                    fileNameEl.textContent = '已选择 ' + selectedFiles.length + ' 个文件';
+                }
+                fileCountEl.innerHTML = '<span class="file-count-badge">' + selectedFiles.length + ' 个文件</span>';
+
+                previewGrid.innerHTML = '';
+                selectedFiles.slice(0, 20).forEach(file => {
+                    const item = document.createElement('div');
+                    item.className = 'preview-item';
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.onload = () => URL.revokeObjectURL(img.src);
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'preview-name';
+                    nameDiv.textContent = file.name;
+                    item.appendChild(img);
+                    item.appendChild(nameDiv);
+                    previewGrid.appendChild(item);
+                });
+                if (selectedFiles.length > 20) {
+                    const more = document.createElement('div');
+                    more.style.cssText = 'display:flex;align-items:center;font-size:0.8rem;color:#888;';
+                    more.textContent = '...还有 ' + (selectedFiles.length - 20) + ' 个文件';
+                    previewGrid.appendChild(more);
+                }
+            } else {
+                area.classList.remove('has-file');
+                fileCountEl.innerHTML = '';
+                previewGrid.innerHTML = '';
+            }
+        }
+
+        // 拖拽支持
+        const area = document.getElementById('uploadArea');
+        area.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            area.classList.add('dragover');
+        });
+        area.addEventListener('dragleave', function() {
+            area.classList.remove('dragover');
+        });
+        area.addEventListener('drop', function(e) {
+            e.preventDefault();
+            area.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files);
+            selectedFiles = files.filter(f => {
+                const name = f.name.toLowerCase();
+                return name.endsWith('.gif') || name.endsWith('.webp');
+            });
+            if (selectedFiles.length === 0 && files.length > 0) {
+                alert('拖入的文件中没有 GIF 或 WebP 格式的动态图片');
+                return;
+            }
+            updateFileDisplay();
+        });
+
+        // 文件夹模式：读取文件、上传、写回结果
+        async function handleFolderConvert() {
+            if (!directoryHandle) {
+                alert('请先选择文件夹');
+                return;
+            }
+
+            const format = document.getElementById('outputFormat').value;
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            const loadingDiv = document.getElementById('loading');
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingText = document.getElementById('loadingText');
+
+            resultDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            loadingDiv.style.display = 'block';
+            submitBtn.disabled = true;
+            loadingText.textContent = '正在扫描文件夹...';
+
+            try {
+                // 读取文件夹中的动态图文件，跳过空文件
+                const allowedExts = getAllowedExts();
+                if (allowedExts.length === 0) {
+                    throw new Error('请至少选择一种动态图格式');
+                }
+                const files = [];
+                for await (const entry of directoryHandle.values()) {
+                    if (entry.kind === 'file') {
+                        const name = entry.name.toLowerCase();
+                        if (allowedExts.some(ext => name.endsWith(ext))) {
+                            const file = await entry.getFile();
+                            if (file.size > 0) {
+                                files.push({ name: entry.name, file, handle: entry });
+                            }
+                        }
+                    }
+                }
+
+                if (files.length === 0) {
+                    const extNames = allowedExts.map(e => e.replace('.', '').toUpperCase()).join('、');
+                    throw new Error('文件夹中没有 ' + extNames + ' 文件');
+                }
+
+                loadingText.textContent = '正在转换 ' + files.length + ' 个文件...';
+
+                // 逐个转换并写回
+                let successCount = 0;
+                const outDirName = 'converted_video';
+                const outDirHandle = await directoryHandle.getDirectoryHandle(outDirName, { create: true });
+
+                for (const { name, file } of files) {
+                    const baseName = name.substring(0, name.lastIndexOf('.'));
+                    const ext = format === 'webm' ? 'webm' : format === 'avi' ? 'avi' : 'mp4';
+                    const outFileName = baseName + '.' + ext;
+
+                    // 检查是否已转换过
+                    try {
+                        const existingHandle = await outDirHandle.getFileHandle(outFileName);
+                        const existingFile = await existingHandle.getFile();
+                        if (existingFile.size > 0) {
+                            successCount++;
+                            continue;
+                        }
+                    } catch (e) {
+                        // 文件不存在，继续转换
+                    }
+
+                    loadingText.textContent = '正在转换 (' + (successCount + 1) + '/' + files.length + '): ' + name;
+
+                    // 读取文件内容并重新构建，确保可传输
+                    const buffer = await file.arrayBuffer();
+                    const uint8 = new Uint8Array(buffer);
+                    const newFile = new File([uint8], name, { type: file.type || 'image/webp' });
+
+                    const formData = new FormData();
+                    formData.append('files', newFile);
+                    formData.append('format', format);
+
+                    const resp = await fetch('/api/anim-to-video', { method: 'POST', body: formData });
+                    if (!resp.ok) {
+                        const errText = await resp.text();
+                        let errMsg = '转换失败';
+                        try { errMsg = JSON.parse(errText).errorMessage || errMsg; } catch(e) {}
+                        throw new Error(name + ': ' + errMsg);
+                    }
+
+                    const resultBlob = await resp.blob();
+
+                    const outFileHandle = await outDirHandle.getFileHandle(outFileName, { create: true });
+                    const writable = await outFileHandle.createWritable();
+                    await writable.write(resultBlob);
+                    await writable.close();
+                    successCount++;
+                }
+
+                loadingDiv.style.display = 'none';
+                submitBtn.disabled = false;
+                resultDiv.style.display = 'block';
+                document.getElementById('resultText').textContent =
+                    '成功转换 ' + successCount + ' 个文件，已保存到 ' + outDirName + ' 目录';
+
+            } catch (err) {
+                loadingDiv.style.display = 'none';
+                submitBtn.disabled = false;
+                errorDiv.style.display = 'block';
+                document.getElementById('errorText').textContent = err.message || '请求失败';
+            }
+        }
+
+        // 表单提交
+        document.getElementById('convertForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // 文件夹模式走独立流程
+            if (currentMode === 'folder') {
+                handleFolderConvert();
+                return;
+            }
+
+            // 文件模式
+            if (!Array.isArray(selectedFiles) || selectedFiles.length === 0) {
+                alert('请先选择文件');
+                return;
+            }
+
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            const loadingDiv = document.getElementById('loading');
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingText = document.getElementById('loadingText');
+
+            resultDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            loadingDiv.style.display = 'block';
+            submitBtn.disabled = true;
+
+            loadingText.textContent = '正在转换 ' + selectedFiles.length + ' 个文件，请稍候...';
+
+            const formData = new FormData();
+            selectedFiles.forEach(f => formData.append('files', f));
+            formData.append('format', document.getElementById('outputFormat').value);
+
+            fetch('/api/anim-to-video', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                const contentType = response.headers.get('Content-Type') || '';
+                const isFileResponse = contentType.includes('application/zip')
+                    || contentType.includes('video/');
+
+                if (response.ok && isFileResponse) {
+                    const disposition = response.headers.get('Content-Disposition') || '';
+                    const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;\n]*)/i);
+                    const fileName = match ? decodeURIComponent(match[1].replace(/"/g, '')) : 'output.mp4';
+
+                    response.blob().then(blob => {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    });
+
+                    loadingDiv.style.display = 'none';
+                    submitBtn.disabled = false;
+                    resultDiv.style.display = 'block';
+                    document.getElementById('resultText').textContent =
+                        '成功转换 ' + selectedFiles.length + ' 个文件，已自动下载';
+                    return;
+                }
+
+                return response.clone().text().then(text => {
+                    try {
+                        const data = JSON.parse(text);
+                        throw new Error(data.errorMessage || '转换失败');
+                    } catch (e) {
+                        if (response.ok && !text.startsWith('{')) {
+                            response.blob().then(blob => {
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = 'videos_batch.zip';
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                            });
+                            loadingDiv.style.display = 'none';
+                            submitBtn.disabled = false;
+                            resultDiv.style.display = 'block';
+                            document.getElementById('resultText').textContent =
+                                '成功转换，已自动下载';
+                        } else {
+                            throw e;
+                        }
+                    }
+                });
+            })
+            .catch(err => {
+                loadingDiv.style.display = 'none';
+                submitBtn.disabled = false;
+                errorDiv.style.display = 'block';
+                document.getElementById('errorText').textContent = err.message || '请求失败';
+            });
+        });
+    </script>
+</body>
+</html>
