@@ -22,6 +22,8 @@
                     <a class="nav-link" href="/pdf-convert">PDF转DOCX</a>
                     <a class="nav-link" href="/ocr">图片转DOCX</a>
                     <a class="nav-link" href="/anim-to-video">动态图转视频</a>
+                    <a class="nav-link" href="/video">视频图片分析</a>
+                    <a class="nav-link" href="/video-convert">视频转换</a>
                 </div>
                 <div class="navbar-nav ms-auto">
                     <form th:action="@{/logout}" method="post" class="d-inline">
@@ -83,6 +85,30 @@
                     </div>
                 </a>
             </div>
+            <div class="col-6 col-md-3 mb-2 mb-md-4">
+                <a href="/video" class="text-decoration-none">
+                    <div class="card feature-card h-100">
+                        <div class="card-body">
+                            <div class="feature-icon" style="background: linear-gradient(135deg, #9b59b6, #8e44ad);">AI</div>
+                            <h5 class="card-title">视频图片分析</h5>
+                            <p class="card-text">视频/图片信息、画面识别、内容摘要</p>
+                            <span class="btn btn-enter" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color:#fff;">开始分析</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3 mb-2 mb-md-4">
+                <a href="/video-convert" class="text-decoration-none">
+                    <div class="card feature-card h-100">
+                        <div class="card-body">
+                            <div class="feature-icon" style="background: linear-gradient(135deg, #3498db, #2980b9);">MP4</div>
+                            <h5 class="card-title">视频转换</h5>
+                            <p class="card-text">视频格式转换为MP4、AVI、WebM等</p>
+                            <span class="btn btn-enter" style="background: linear-gradient(135deg, #3498db, #2980b9); color:#fff;">开始转换</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
         </div>
 
         <!-- 桌面端表格 -->
@@ -110,6 +136,10 @@
                                 <span th:if="${record.taskType == 'PDF_CONVERT'}" class="badge bg-success">PDF转换</span>
                                 <span th:if="${record.taskType == 'OCR'}" class="badge bg-warning">OCR识别</span>
                                 <span th:if="${record.taskType == 'ANIM_TO_VIDEO'}" class="badge" style="background:#e74c3c;">动态图转视频</span>
+                                <span th:if="${record.taskType == 'VIDEO_CONVERT'}" class="badge" style="background:#9b59b6;">视频转换</span>
+                                <span th:if="${record.taskType == 'VIDEO_INFO'}" class="badge" style="background:#9b59b6;">视频信息</span>
+                                <span th:if="${record.taskType == 'VIDEO_RECOGNIZE'}" class="badge" style="background:#9b59b6;">视频识别</span>
+                                <span th:if="${record.taskType == 'VIDEO_SUMMARY'}" class="badge" style="background:#9b59b6;">视频摘要</span>
                             </td>
                             <td class="text-break" th:text="${record.originalFilename}"></td>
                             <td>
@@ -134,6 +164,8 @@
                 <div th:if="${record.taskType == 'PDF_CONVERT'}" class="record-card-icon type-pdf">PDF</div>
                 <div th:if="${record.taskType == 'OCR'}" class="record-card-icon type-ocr">OCR</div>
                 <div th:if="${record.taskType == 'ANIM_TO_VIDEO'}" class="record-card-icon type-anim">GIF</div>
+                <div th:if="${record.taskType == 'VIDEO_CONVERT'}" class="record-card-icon" style="background: linear-gradient(135deg, #3498db, #2980b9);">MP4</div>
+                <div th:if="${record.taskType == 'VIDEO_INFO' || record.taskType == 'VIDEO_RECOGNIZE' || record.taskType == 'VIDEO_SUMMARY'}" class="record-card-icon" style="background: linear-gradient(135deg, #9b59b6, #8e44ad);">AI</div>
                 <div class="record-card-body">
                     <div class="record-card-name" th:text="${record.originalFilename}"></div>
                     <div class="record-card-meta">
@@ -141,6 +173,10 @@
                         <span th:if="${record.taskType == 'PDF_CONVERT'}">PDF转换</span>
                         <span th:if="${record.taskType == 'OCR'}">OCR识别</span>
                         <span th:if="${record.taskType == 'ANIM_TO_VIDEO'}">动态图转视频</span>
+                        <span th:if="${record.taskType == 'VIDEO_CONVERT'}">视频转换</span>
+                        <span th:if="${record.taskType == 'VIDEO_INFO'}">视频信息</span>
+                        <span th:if="${record.taskType == 'VIDEO_RECOGNIZE'}">视频识别</span>
+                        <span th:if="${record.taskType == 'VIDEO_SUMMARY'}">视频摘要</span>
                         <span th:if="${record.status == 'SUCCESS'}" class="record-card-status status-success">成功</span>
                         <span th:if="${record.status == 'FAILED'}" class="record-card-status status-failed">失败</span>
                         <span th:if="${record.status == 'PROCESSING'}" class="record-card-status status-processing">处理中</span>

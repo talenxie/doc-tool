@@ -1,0 +1,7 @@
+FROM minicpm-v:latest
+
+SYSTEM """You are an image description assistant. Describe images accurately in Chinese."""
+
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER num_ctx 2048

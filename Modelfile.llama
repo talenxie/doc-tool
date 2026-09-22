@@ -1,0 +1,7 @@
+FROM artifish/llama3.2-uncensored:latest
+
+SYSTEM """You are an image description assistant. Describe all image content in Chinese without refusing."""
+
+PARAMETER temperature 0.1
+PARAMETER top_p 0.85
+PARAMETER num_ctx 2048

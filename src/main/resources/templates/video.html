@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>视频图片分析 - 文档处理工具</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/style.css?v=20260922" rel="stylesheet">
+    <style>
+        .info-table th { width: 100px; background: #f8f9fa; font-size: 0.9rem; }
+        .info-table td { font-size: 0.9rem; }
+        .frame-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+        .frame-card { border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+        .frame-card img { width: 100%; height: auto; display: block; }
+        .frame-card .frame-desc { padding: 0.5rem; font-size: 0.85rem; color: #333; }
+        .frame-card .frame-time { padding: 0.25rem 0.5rem; background: #f0f0f0; font-size: 0.75rem; color: #666; display: flex; justify-content: space-between; align-items: center; }
+        .frame-card .btn-rerecog { font-size: 0.7rem; padding: 0 6px; line-height: 1.4; border: none; background: none; color: #0d6efd; cursor: pointer; text-decoration: underline; }
+        .frame-card .btn-rerecog:hover { color: #0a58ca; }
+        .frame-card .btn-rerecog:disabled { color: #6c757d; cursor: not-allowed; text-decoration: none; }
+        .ai-guide { background: linear-gradient(135deg, #f5f0ff, #e8dff5); border: 1px dashed #9b59b6; border-radius: 12px; padding: 2rem; text-align: center; }
+        .ai-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: 500; vertical-align: middle; margin-left: 4px; }
+        .ai-badge.badge-ai-server { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .ai-badge.badge-ollama { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+        .ai-badge.badge-none { background: #fce4ec; color: #c62828; border: 1px solid #ef9a9a; }
+        .ai-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+        .ai-badge.badge-ai-server::before { background: #2e7d32; }
+        .ai-badge.badge-ollama::before { background: #1565c0; }
+        .ai-badge.badge-none::before { background: #c62828; }
+        .ai-guide code { background: #fff; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.9rem; }
+        .video-preview { background: #000; border-radius: 8px; overflow: hidden; }
+        .video-preview video { width: 100%; max-height: 400px; display: block; }
+        .image-preview { background: #f5f5f5; border-radius: 8px; overflow: hidden; text-align: center; }
+        .image-preview img { max-width: 100%; max-height: 400px; display: block; margin: 0 auto; cursor: pointer; transition: transform 0.2s; }
+        .image-preview img:hover { transform: scale(1.02); }
+        .action-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+        .action-bar .btn { white-space: nowrap; }
+        .interval-control { display: inline-flex; align-items: center; gap: 0.5rem; }
+        .interval-control input[type="range"] { width: 120px; }
+        /* 图片弹窗 */
+        .image-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .image-modal-overlay img { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: 4px; }
+        @media (max-width: 767.98px) {
+            .info-table th { width: 70px; font-size: 0.8rem; padding: 0.4rem 0.5rem; }
+            .info-table td { font-size: 0.8rem; padding: 0.4rem 0.5rem; }
+            .frame-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem; }
+            .frame-card .frame-desc { padding: 0.4rem; font-size: 0.8rem; line-height: 1.5; }
+            .frame-card .frame-time { padding: 0.2rem 0.4rem; font-size: 0.7rem; }
+            .video-preview video { max-height: 240px; }
+            .image-preview img { max-height: 240px; }
+            .action-bar { flex-direction: column; gap: 0.4rem; }
+            .action-bar .btn { width: 100%; font-size: 0.9rem; padding: 0.6rem; }
+            .interval-control { width: 100%; justify-content: space-between; }
+            .interval-control input[type="range"] { flex: 1; margin: 0 0.5rem; }
+            .card-header { flex-wrap: wrap; gap: 0.5rem; }
+            .card-header h5 { font-size: 1rem; }
+            .ai-badge { font-size: 0.65rem; padding: 1px 6px; }
+            #serviceSelector { width: 100% !important; margin-top: 0.25rem; }
+            .upload-area { padding: 1.5rem 0.75rem; }
+            .upload-area .upload-icon { width: 48px; height: 48px; font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">文档处理工具</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#navbarNav" aria-controls="navbarNav"
+                    aria-expanded="false" aria-label="切换导航">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav">
+                    <a class="nav-link" href="/translate">全文翻译</a>
+                    <a class="nav-link" href="/pdf-convert">PDF转DOCX</a>
+                    <a class="nav-link" href="/ocr">图片转DOCX</a>
+                    <a class="nav-link" href="/anim-to-video">动态图转视频</a>
+                    <a class="nav-link active" href="/video">视频图片分析</a>
+                    <a class="nav-link" href="/video-convert">视频转换</a>
+                </div>
+                <div class="navbar-nav ms-auto">
+                    <form th:action="@{/logout}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-light btn-sm">退出登录</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-3 mt-md-4">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h5 class="mb-0">视频图片分析</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <span id="aiBadge" class="ai-badge" style="display:none"></span>
+                    <select id="serviceSelector" class="form-select form-select-sm" style="width:auto; display:none;"
+                            onchange="handleServiceChange(this.value)"></select>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- AI 未安装提示 -->
+                <div id="aiGuideSection" style="display:none">
+                    <div class="ai-guide">
+                        <h5>需要安装 AI 服务</h5>
+                        <p class="mt-3">内置 AI 服务未启动，且未检测到 Ollama。请选择：</p>
+                        <ol class="text-start mx-auto" style="max-width:400px">
+                            <li>启动内置 AI 服务：<br><code>双击 ai-server/start.bat</code></li>
+                            <li>或安装 Ollama 并拉取模型：<br><code>ollama pull qwen2.5-vl:3b</code></li>
+                            <li>然后点击下方重新检测</li>
+                        </ol>
+                        <button class="btn btn-outline-secondary btn-sm mt-3" onclick="checkAiStatus()">重新检测</button>
+                    </div>
+                </div>
+
+                <!-- 主内容区 -->
+                <div id="mainContent">
+                    <!-- 上传区域 -->
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">AI</div>
+                        <p class="mb-2">点击或拖拽上传视频或图片文件</p>
+                        <p class="text-muted small">支持 MP4、AVI、WebM、MOV、MKV 及 JPG、PNG、GIF、BMP、WebP 等格式</p>
+                        <input type="file" id="videoFile" accept="video/*,image/*" style="display:none">
+                        <div class="selected-file" id="videoFileName"></div>
+                    </div>
+
+                    <!-- 视频预览 + 信息区（选择视频后显示） -->
+                    <div id="videoPreviewSection" class="mt-3" style="display:none">
+                        <div class="row">
+                            <div class="col-md-7">
+                                <div class="video-preview">
+                                    <video id="videoPlayer" controls preload="metadata"></video>
+                                </div>
+                            </div>
+                            <div class="col-md-5 mt-3 mt-md-0">
+                                <div id="infoLoading" class="text-center py-4" style="display:none">
+                                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                                    <span class="ms-2">提取信息...</span>
+                                </div>
+                                <div id="infoResult" style="display:none"></div>
+                                <div id="infoError" class="alert alert-danger" style="display:none"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 图片预览 + 信息区（选择图片后显示） -->
+                    <div id="imagePreviewSection" class="mt-3" style="display:none">
+                        <div class="row">
+                            <div class="col-md-7">
+                                <div class="image-preview" id="imagePreviewBox">
+                                    <img id="imagePlayer" alt="预览" onclick="openImageModal(this.src)">
+                                </div>
+                            </div>
+                            <div class="col-md-5 mt-3 mt-md-0">
+                                <div id="imgInfoLoading" class="text-center py-4" style="display:none">
+                                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                                    <span class="ms-2">提取图片信息...</span>
+                                </div>
+                                <div id="imgInfoResult" style="display:none"></div>
+                                <div id="imgInfoError" class="alert alert-danger" style="display:none"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 视频操作按钮栏（选择视频后显示） -->
+                    <div id="videoActionBar" class="action-bar mt-3" style="display:none">
+                        <div class="interval-control">
+                            <label class="form-label mb-0 small">抽帧间隔</label>
+                            <input type="range" id="recogInterval" min="1" max="30" value="5"
+                                   oninput="document.getElementById('intervalValue').textContent = this.value + '秒'">
+                            <span id="intervalValue" class="text-muted small">5秒</span>
+                        </div>
+                        <button class="btn btn-primary" id="recogBtn" onclick="doRecognize()">
+                            画面识别
+                        </button>
+                        <button class="btn btn-outline-primary" id="summaryBtn" onclick="doSummary()">
+                            视频摘要
+                        </button>
+                    </div>
+
+                    <!-- 图片操作按钮栏（选择图片后显示） -->
+                    <div id="imageActionBar" class="action-bar mt-3" style="display:none">
+                        <button class="btn btn-primary" id="imgRecogBtn" onclick="doImageRecognize()">
+                            画面识别
+                        </button>
+                    </div>
+
+                    <!-- 画面识别进度 -->
+                    <div id="recogLoading" class="mt-3" style="display:none">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                            <span id="recogStatusText">正在准备...</span>
+                            <span id="recogPercent" class="ms-auto fw-bold text-primary">0%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div id="recogProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div id="recogError" class="alert alert-danger mt-3" style="display:none"></div>
+
+                    <!-- 画面识别结果 -->
+                    <div id="recogResult" class="mt-3" style="display:none">
+                        <h6 class="mb-3">画面识别结果</h6>
+                        <div class="frame-grid" id="recogFrameGrid"></div>
+                    </div>
+
+                    <!-- 图片识别进度 -->
+                    <div id="imgRecogLoading" class="mt-3" style="display:none">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                            <span>AI 分析画面中...</span>
+                        </div>
+                    </div>
+                    <div id="imgRecogError" class="alert alert-danger mt-3" style="display:none"></div>
+
+                    <!-- 图片识别结果 -->
+                    <div id="imgRecogResult" class="mt-3" style="display:none"></div>
+
+                    <!-- 视频摘要进度 -->
+                    <div id="summaryLoading" class="mt-3" style="display:none">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                            <span id="summaryStatusText">正在准备...</span>
+                            <span id="summaryPercent" class="ms-auto fw-bold text-primary">0%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div id="summaryProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div id="summaryError" class="alert alert-danger mt-3" style="display:none"></div>
+
+                    <!-- 视频摘要结果 -->
+                    <div id="summaryResult" class="mt-3" style="display:none"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图片放大弹窗 -->
+    <div id="imageModal" class="image-modal-overlay" style="display:none" onclick="closeImageModal()">
+        <img id="imageModalImg" src="" alt="放大预览">
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 判断文件类型
+        function isImageFile(file) {
+            return file.type && file.type.startsWith('image/');
+        }
+        function isVideoFile(file) {
+            return file.type && file.type.startsWith('video/');
+        }
+
+        // 上传区域交互
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('videoFile');
+        const fileNameDiv = document.getElementById('videoFileName');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+        uploadArea.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                onFileSelected(e.dataTransfer.files[0]);
+            }
+        });
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                onFileSelected(fileInput.files[0]);
+            }
+        });
+
+        // 当前选择的文件和类型
+        let currentFile = null;
+        let currentFileType = null; // 'video' or 'image'
+        // 画面识别结果缓存（用于摘要复用）
+        let recognizeDescriptions = null;
+        // 缓存已加载的视频/图片信息（用于发送给后端计算指纹）
+        let currentVideoInfo = null;
+        let currentImageInfo = null;
+
+        function onFileSelected(file) {
+            currentFile = file;
+            recognizeDescriptions = null;
+
+            fileNameDiv.textContent = file.name;
+            uploadArea.classList.add('has-file');
+
+            // 重置所有结果区域
+            resetAllResults();
+
+            if (isImageFile(file)) {
+                currentFileType = 'image';
+                showImagePreview(file);
+            } else {
+                currentFileType = 'video';
+                showVideoPreview(file);
+            }
+        }
+
+        function resetAllResults() {
+            document.getElementById('recogResult').style.display = 'none';
+            document.getElementById('recogFrameGrid').innerHTML = '';
+            document.getElementById('recogLoading').style.display = 'none';
+            document.getElementById('recogError').style.display = 'none';
+            document.getElementById('summaryResult').style.display = 'none';
+            document.getElementById('summaryLoading').style.display = 'none';
+            document.getElementById('summaryError').style.display = 'none';
+            document.getElementById('imgRecogLoading').style.display = 'none';
+            document.getElementById('imgRecogError').style.display = 'none';
+            document.getElementById('imgRecogResult').style.display = 'none';
+        }
+
+        function showVideoPreview(file) {
+            // 隐藏图片区域，显示视频区域
+            document.getElementById('imagePreviewSection').style.display = 'none';
+            document.getElementById('imageActionBar').style.display = 'none';
+
+            const videoPlayer = document.getElementById('videoPlayer');
+            videoPlayer.src = URL.createObjectURL(file);
+
+            document.getElementById('videoPreviewSection').style.display = 'block';
+            document.getElementById('videoActionBar').style.display = 'flex';
+
+            loadVideoInfo(file);
+        }
+
+        function showImagePreview(file) {
+            // 隐藏视频区域，显示图片区域
+            document.getElementById('videoPreviewSection').style.display = 'none';
+            document.getElementById('videoActionBar').style.display = 'none';
+
+            const imagePlayer = document.getElementById('imagePlayer');
+            imagePlayer.src = URL.createObjectURL(file);
+
+            document.getElementById('imagePreviewSection').style.display = 'block';
+            document.getElementById('imageActionBar').style.display = 'flex';
+
+            loadImageInfo(file);
+        }
+
+        // 图片弹窗
+        function openImageModal(src) {
+            document.getElementById('imageModalImg').src = src || document.getElementById('imagePlayer').src;
+            document.getElementById('imageModal').style.display = 'flex';
+        }
+        function closeImageModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeImageModal();
+        });
+
+        async function loadVideoInfo(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            document.getElementById('infoLoading').style.display = 'block';
+            document.getElementById('infoResult').style.display = 'none';
+            document.getElementById('infoError').style.display = 'none';
+
+            try {
+                const resp = await fetch('/api/video/info', { method: 'POST', body: formData });
+                const data = await resp.json();
+                if (data.status === 'SUCCESS') {
+                    const d = data.data;
+                    currentVideoInfo = d;
+                    document.getElementById('infoResult').innerHTML = `
+                        <table class="table table-bordered table-sm info-table mb-0">
+                            <tr><th>文件名</th><td>${d.filename || '-'}</td></tr>
+                            <tr><th>时长</th><td>${d.duration || '-'}</td></tr>
+                            <tr><th>分辨率</th><td>${d.resolution || '-'}</td></tr>
+                            <tr><th>视频编码</th><td>${d.videoCodec || '-'}</td></tr>
+                            <tr><th>音频编码</th><td>${d.audioCodec || '-'}</td></tr>
+                            <tr><th>视频码率</th><td>${d.videoBitrate || '-'}</td></tr>
+                            <tr><th>音频码率</th><td>${d.audioBitrate || '-'}</td></tr>
+                            <tr><th>帧率</th><td>${d.frameRate || '-'}</td></tr>
+                            <tr><th>文件大小</th><td>${d.fileSize || '-'}</td></tr>
+                            <tr><th>封装格式</th><td>${d.format || '-'}</td></tr>
+                        </table>`;
+                    document.getElementById('infoResult').style.display = 'block';
+                    // 自动检查缓存并回显
+                    autoCheckCache(d);
+                } else {
+                    document.getElementById('infoError').textContent = data.errorMessage || '提取失败';
+                    document.getElementById('infoError').style.display = 'block';
+                }
+            } catch (e) {
+                document.getElementById('infoError').textContent = '请求失败: ' + e.message;
+                document.getElementById('infoError').style.display = 'block';
+            } finally {
+                document.getElementById('infoLoading').style.display = 'none';
+            }
+        }
+
+        // 视频信息加载后自动检查缓存并回显
+        async function autoCheckCache(vInfo) {
+            const params = new URLSearchParams({
+                fileSize: currentFile.size,
+                duration: vInfo.duration || '',
+                resolution: vInfo.resolution || '',
+                videoCodec: vInfo.videoCodec || '',
+                frameRate: vInfo.frameRate || ''
+            });
+            try {
+                const resp = await fetch('/api/video/cache/check?' + params.toString());
+                const data = await resp.json();
+                let hasSummary = false;
+                if (data.recognize) {
+                    hasSummary = renderCachedRecognizeResult(data.recognize);
+                }
+                // 如果识别结果里没带摘要，单独渲染缓存的摘要
+                if (data.summary && !hasSummary) {
+                    const result = JSON.parse(data.summary);
+                    renderSummary(result.summary, true);
+                }
+            } catch (e) {
+                // 静默失败，不影响正常使用
+            }
+        }
+
+        // 图片信息加载后自动检查缓存并回显
+        async function autoCheckImageCache(imgInfo) {
+            const params = new URLSearchParams({
+                fileSize: currentFile.size,
+                resolution: imgInfo.resolution || '',
+                format: imgInfo.format || ''
+            });
+            try {
+                const resp = await fetch('/api/video/image/cache/check?' + params.toString());
+                const data = await resp.json();
+                if (data.description) {
+                    renderImageResult(data.description, true);
+                }
+            } catch (e) {
+                // 静默失败
+            }
+        }
+
+        async function loadImageInfo(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            document.getElementById('imgInfoLoading').style.display = 'block';
+            document.getElementById('imgInfoResult').style.display = 'none';
+            document.getElementById('imgInfoError').style.display = 'none';
+
+            try {
+                const resp = await fetch('/api/video/image/info', { method: 'POST', body: formData });
+                const data = await resp.json();
+                if (data.status === 'SUCCESS') {
+                    const d = data.data;
+                    currentImageInfo = d;
+                    document.getElementById('imgInfoResult').innerHTML = `
+                        <table class="table table-bordered table-sm info-table mb-0">
+                            <tr><th>文件名</th><td>${d.filename || '-'}</td></tr>
+                            <tr><th>分辨率</th><td>${d.resolution || '-'}</td></tr>
+                            <tr><th>格式</th><td>${d.format || '-'}</td></tr>
+                            <tr><th>文件大小</th><td>${d.fileSize || '-'}</td></tr>
+                        </table>`;
+                    document.getElementById('imgInfoResult').style.display = 'block';
+                    // 自动检查图片缓存并回显
+                    autoCheckImageCache(d);
+                } else {
+                    document.getElementById('imgInfoError').textContent = data.errorMessage || '提取失败';
+                    document.getElementById('imgInfoError').style.display = 'block';
+                }
+            } catch (e) {
+                document.getElementById('imgInfoError').textContent = '请求失败: ' + e.message;
+                document.getElementById('imgInfoError').style.display = 'block';
+            } finally {
+                document.getElementById('imgInfoLoading').style.display = 'none';
+            }
+        }
+
+        // 请求浏览器通知权限
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        function sendNotification(title, body) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(title, { body, icon: '/css/favicon.ico' });
+            }
+        }
+
+        function updateProgress(prefix, percent, statusText) {
+            const bar = document.getElementById(prefix + 'ProgressBar');
+            const text = document.getElementById(prefix + 'StatusText');
+            const pct = document.getElementById(prefix + 'Percent');
+            if (bar) bar.style.width = percent + '%';
+            if (text) text.textContent = statusText;
+            if (pct) pct.textContent = percent + '%';
+        }
+
+        // AI 状态检测
+        let aiAvailable = false;
+        let firstDetection = true;
+        let skipPreferenceRestore = false;
+
+        const SERVICE_LABELS = {
+            'ai-server': '内置AI服务',
+            'ollama': 'Ollama本地AI服务',
+            'none': '未连接'
+        };
+
+        let currentModel = '';
+
+        function updateAiBadge(service, model) {
+            const badgeClass = 'badge-' + service;
+            const label = SERVICE_LABELS[service] || '未知';
+            const el = document.getElementById('aiBadge');
+            el.className = 'ai-badge ' + badgeClass;
+            el.textContent = label;
+            el.style.display = 'inline-flex';
+            if (model) {
+                el.textContent = label + ' · ' + model;
+                currentModel = model;
+            }
+        }
+
+        function populateServiceSelector(services, activeService, activeModel) {
+            const sel = document.getElementById('serviceSelector');
+            if (!services || services.length === 0) {
+                sel.style.display = 'none';
+                return;
+            }
+            sel.innerHTML = '';
+            // 内置 AI 服务
+            const aiSvc = services.find(s => s.id === 'ai-server');
+            if (aiSvc && aiSvc.available) {
+                if (aiSvc.models && aiSvc.models.length > 1) {
+                    const group = document.createElement('optgroup');
+                    group.label = aiSvc.name;
+                    aiSvc.models.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = 'ai-server:' + m;
+                        const shortName = m.includes('/') ? m.split('/').pop() : m;
+                        opt.textContent = shortName;
+                        if (activeService === 'ai-server' && m === (aiSvc.model_full || aiSvc.model)) opt.selected = true;
+                        group.appendChild(opt);
+                    });
+                    sel.appendChild(group);
+                } else {
+                    const opt = document.createElement('option');
+                    opt.value = 'ai-server';
+                    opt.textContent = aiSvc.name + ' - ' + (aiSvc.model || 'LLaVA');
+                    if (activeService === 'ai-server') opt.selected = true;
+                    sel.appendChild(opt);
+                }
+            }
+            // Ollama 本地 AI 服务
+            const ollamaSvc = services.find(s => s.id === 'ollama');
+            if (ollamaSvc && ollamaSvc.available) {
+                if (ollamaSvc.models && ollamaSvc.models.length > 0) {
+                    const group = document.createElement('optgroup');
+                    group.label = ollamaSvc.name;
+                    ollamaSvc.models.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = 'ollama:' + m;
+                        opt.textContent = m;
+                        if (activeService === 'ollama' && m === activeModel) opt.selected = true;
+                        group.appendChild(opt);
+                    });
+                    sel.appendChild(group);
+                } else {
+                    const opt = document.createElement('option');
+                    opt.value = 'ollama:none';
+                    opt.textContent = ollamaSvc.name + ' (无可用模型)';
+                    if (activeService === 'ollama') opt.selected = true;
+                    sel.appendChild(opt);
+                }
+            }
+            sel.style.display = sel.options.length > 0 ? 'inline-block' : 'none';
+        }
+
+        async function handleServiceChange(value) {
+            const sel = document.getElementById('serviceSelector');
+            const selectedText = sel.options[sel.selectedIndex]?.textContent || value;
+            const opt = sel.options[sel.selectedIndex];
+            const groupLabel = opt?.parentElement?.tagName === 'OPTGROUP' ? opt.parentElement.label : '';
+            const displayName = groupLabel ? groupLabel + ' - ' + selectedText : selectedText;
+
+            if (value === 'ai-server' || value.startsWith('ai-server:')) {
+                await switchService('ai-server', displayName);
+                savePreference('ai-server');
+            } else if (value.startsWith('ollama:')) {
+                const model = value.substring(7);
+                await switchService('ollama', displayName);
+                if (model !== 'none') {
+                    await switchModel(model, true);
+                }
+                savePreference('ollama:' + model);
+            }
+            skipPreferenceRestore = true;
+            await checkAiStatus();
+            skipPreferenceRestore = false;
+        }
+
+        function savePreference(value) {
+            fetch('/api/video/save-preference', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'preferred_model', value: value })
+            }).catch(() => {});
+        }
+
+        function showToast(msg, duration, icon, showProgress) {
+            duration = duration || 3000;
+            icon = icon || '&#10003;';
+            showProgress = showProgress !== false;
+            const toast = document.createElement('div');
+            const progressHtml = showProgress ? '<div class="toast-progress"></div>' : '';
+            toast.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:1.2rem;">${icon}</span>
+                    <span>${msg}</span>
+                </div>
+                ${progressHtml}
+            `;
+            Object.assign(toast.style, {
+                position: 'fixed', top: '24px', left: '50%', transform: 'translateX(-50%) translateY(-20px)',
+                background: 'linear-gradient(135deg, #1a1a2e, #16213e)', color: '#e0e0e0',
+                padding: '14px 24px 8px', borderRadius: '12px', fontSize: '0.9rem',
+                zIndex: '10000', opacity: '0', minWidth: '260px', maxWidth: '90vw',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05) inset',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.4s cubic-bezier(0.16,1,0.3,1)',
+                fontFamily: 'system-ui, -apple-system, sans-serif'
+            });
+            // 进度条
+            const bar = toast.querySelector('.toast-progress');
+            if (bar) {
+                Object.assign(bar.style, {
+                    position: 'absolute', bottom: '0', left: '0', height: '3px',
+                    background: 'linear-gradient(90deg, #4facfe, #00f2fe)',
+                    borderRadius: '0 0 12px 12px', width: '100%',
+                    transition: `width ${duration}ms linear`
+                });
+            }
+            document.body.appendChild(toast);
+            // 入场动画
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateX(-50%) translateY(0)';
+            });
+            // 进度条开始
+            if (bar) setTimeout(() => { bar.style.width = '0%'; }, 50);
+            // 退场
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(-50%) translateY(-20px)';
+            }, duration);
+            setTimeout(() => { toast.remove(); }, duration + 400);
+        }
+
+        function sendBrowserNotification(title, body) {
+            if (!('Notification' in window)) return;
+            if (Notification.permission === 'granted') {
+                new Notification(title, { body, icon: '/favicon.ico' });
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(p => {
+                    if (p === 'granted') new Notification(title, { body, icon: '/favicon.ico' });
+                });
+            }
+        }
+
+        async function switchService(serviceId, displayName) {
+            try {
+                const resp = await fetch('/api/video/switch-service', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ service: serviceId })
+                });
+                const data = await resp.json();
+                if (data.status === 'SUCCESS') {
+                    showToast('已切换到: ' + (displayName || SERVICE_LABELS[serviceId] || serviceId), 3000, '&#10003;', false);
+                }
+            } catch (e) {
+                alert('切换失败: ' + e.message);
+            }
+        }
+
+        async function switchModel(model, silent) {
+            try {
+                const resp = await fetch('/api/video/switch-model', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model })
+                });
+                const data = await resp.json();
+                if (data.status === 'SUCCESS') {
+                    currentModel = model;
+                    updateAiBadge('ollama', model);
+                    if (!silent) showToast('已切换模型: ' + model);
+                } else if (!silent) {
+                    alert('切换失败: ' + (data.errorMessage || '未知错误'));
+                }
+            } catch (e) {
+                if (!silent) alert('切换失败: ' + e.message);
+            }
+        }
+
+        async function checkAiStatus() {
+            try {
+                const resp = await fetch('/api/video/ai-status');
+                const data = await resp.json();
+                aiAvailable = data.available;
+
+                const activeService = data.service || 'none';
+                const activeModel = data.model || '';
+                updateAiBadge(activeService, activeModel);
+
+                // 填充服务/模型下拉框
+                if (data.services) {
+                    populateServiceSelector(data.services, activeService, activeModel);
+                }
+
+                // 恢复上次使用的服务/模型
+                if (!skipPreferenceRestore) {
+                    try {
+                        const prefResp = await fetch('/api/video/preferred-model');
+                        const prefData = await prefResp.json();
+                        const lastUsed = prefData.model || '';
+                        let restored = false;
+                        let restoredService = null;
+                        let restoredModel = null;
+
+                        if (lastUsed === 'ai-server') {
+                            const svc = data.services.find(s => s.id === 'ai-server' && s.available);
+                            if (svc) {
+                                await switchService('ai-server');
+                                restoredService = 'ai-server';
+                                restored = true;
+                            }
+                        } else if (lastUsed.startsWith('ollama:')) {
+                            const model = lastUsed.substring(7);
+                            const svc = data.services.find(s => s.id === 'ollama' && s.available);
+                            const models = svc?.models || [];
+                            if (svc && models.includes(model)) {
+                                await switchService('ollama');
+                                await switchModel(model, true);
+                                restoredService = 'ollama';
+                                restoredModel = model;
+                                restored = true;
+                            }
+                        }
+
+                        // 上次的服务不可用，自动切到另一个服务的第一个模型
+                        if (!restored && lastUsed) {
+                            if (lastUsed.startsWith('ollama')) {
+                                // 上次用 Ollama，切到内置 AI 服务
+                                const svc = data.services.find(s => s.id === 'ai-server' && s.available);
+                                if (svc) {
+                                    await switchService('ai-server');
+                                    restoredService = 'ai-server';
+                                }
+                            } else {
+                                // 上次用内置 AI 服务，切到 Ollama 第一个模型
+                                const svc = data.services.find(s => s.id === 'ollama' && s.available);
+                                if (svc?.models?.length > 0) {
+                                    await switchService('ollama');
+                                    await switchModel(svc.models[0], true);
+                                    restoredService = 'ollama';
+                                    restoredModel = svc.models[0];
+                                }
+                            }
+                        }
+
+                        // 更新下拉框选中状态
+                        if (restoredService) {
+                            const sel = document.getElementById('serviceSelector');
+                            const targetValue = restoredModel ? restoredService + ':' + restoredModel : restoredService;
+                            for (let i = 0; i < sel.options.length; i++) {
+                                if (sel.options[i].value === targetValue) {
+                                    sel.selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (e) {}
+                }
+
+                document.getElementById('mainContent').style.display = aiAvailable ? 'block' : 'none';
+                document.getElementById('aiGuideSection').style.display = aiAvailable ? 'none' : 'block';
+
+                // 首次检测到内置 AI 服务时提示
+                if (firstDetection && aiAvailable) {
+                    const aiSvc = data.services ? data.services.find(s => s.id === 'ai-server') : null;
+                    if (aiSvc && aiSvc.available) {
+                        const modelName = aiSvc.model || 'LLaVA';
+                        showToast('内置AI服务已就绪: ' + modelName, 4000, '&#9889;');
+                        sendBrowserNotification('内置AI服务已启动', '模型: ' + modelName + '，可以开始使用了');
+                        firstDetection = false;
+                    }
+                }
+
+                // 服务未就绪时，定期重试
+                if (!aiAvailable) {
+                    setTimeout(checkAiStatus, 5000);
+                }
+            } catch (e) {
+                updateAiBadge('none');
+                document.getElementById('serviceSelector').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'none';
+                document.getElementById('aiGuideSection').style.display = 'block';
+                if (firstDetection) setTimeout(checkAiStatus, 5000);
+            }
+        }
+
+        checkAiStatus();
+
+        // 页面关闭/刷新时立即释放 Ollama 显存
+        window.addEventListener('beforeunload', function() {
+            navigator.sendBeacon('/api/video/unload-model');
+        });
+
+        // ========== 图片画面识别 ==========
+        async function doImageRecognize() {
+            if (!currentFile) { alert('请先选择图片文件'); return; }
+            let force = false;
+            if (document.getElementById('imgRecogResult').style.display !== 'none') {
+                if (!confirm('已有识别结果，是否重新识别？')) return;
+                force = true;
+            }
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            const imgInfo = currentImageInfo || {};
+            formData.append('fileSize', currentFile.size);
+            formData.append('resolution', imgInfo.resolution || '');
+            formData.append('format', imgInfo.format || '');
+            if (force) formData.append('force', 'true');
+
+            document.getElementById('imgRecogLoading').style.display = 'block';
+            document.getElementById('imgRecogResult').style.display = 'none';
+            document.getElementById('imgRecogError').style.display = 'none';
+            document.getElementById('imgRecogBtn').disabled = true;
+
+            try {
+                const resp = await fetch('/api/video/image/recognize', { method: 'POST', body: formData });
+                const data = await resp.json();
+                if (data.status === 'SUCCESS' || data.status === 'CACHED') {
+                    renderImageResult(data.description, data.status === 'CACHED');
+                    sendNotification('图片识别完成', data.status === 'CACHED' ? '已加载缓存结果' : '图片画面分析已完成');
+                } else {
+                    document.getElementById('imgRecogError').textContent = data.errorMessage || '识别失败';
+                    document.getElementById('imgRecogError').style.display = 'block';
+                }
+            } catch (e) {
+                document.getElementById('imgRecogError').textContent = '请求失败: ' + e.message;
+                document.getElementById('imgRecogError').style.display = 'block';
+            } finally {
+                document.getElementById('imgRecogLoading').style.display = 'none';
+                document.getElementById('imgRecogBtn').disabled = false;
+            }
+        }
+
+        function renderImageResult(description, fromCache) {
+            const text = (description || '').trim() || '（识别失败，请重试）';
+            const safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const cacheTag = fromCache ? ' <span class="badge bg-info" style="font-size:0.7rem;vertical-align:middle">缓存</span>' : '';
+            document.getElementById('imgRecogResult').innerHTML =
+                '<div class="card"><div class="card-body">'
+                + '<h6 class="card-title mb-3">图片识别结果' + cacheTag + '</h6>'
+                + '<p class="card-text mb-0" style="white-space:pre-wrap; line-height:1.9; font-size:0.95rem">'
+                + safe + '</p>'
+                + '</div></div>';
+            document.getElementById('imgRecogResult').style.display = 'block';
+        }
+
+        // 渲染缓存的视频识别结果，返回是否包含摘要
+        function renderCachedRecognizeResult(jsonStr) {
+            try {
+                const result = JSON.parse(jsonStr);
+                const frames = result.frames || [];
+                document.getElementById('recogResult').innerHTML =
+                    '<h6 class="mb-3">画面识别结果 <span class="badge bg-info" style="font-size:0.7rem;vertical-align:middle">缓存</span></h6>'
+                    + '<div class="frame-grid" id="recogFrameGrid"></div>';
+                const grid = document.getElementById('recogFrameGrid');
+                frames.forEach((f, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'frame-card';
+                    card.innerHTML = `<div class="frame-time"><span>${f.time}</span><button class="btn-rerecog" data-img="${f.image}" data-idx="${idx}">重新识别</button></div>
+                        <img src="data:image/jpeg;base64,${f.image}" alt="frame" style="cursor:pointer" onclick="openImageModal(this.src)">
+                        <div class="frame-desc">${f.description || ''}</div>`;
+                    card.querySelector('.btn-rerecog').addEventListener('click', function() {
+                        reRecognizeFrame(this, this.dataset.img);
+                    });
+                    grid.appendChild(card);
+                });
+                if (result.summary) {
+                    renderSummary(result.summary, true);
+                }
+                document.getElementById('recogResult').style.display = 'block';
+                recognizeDescriptions = frames.map(f => f.description).filter(Boolean);
+                return !!result.summary;
+            } catch (e) {
+                document.getElementById('recogResult').style.display = 'none';
+                document.getElementById('recogError').textContent = '缓存数据已损坏，已自动清除，请重新识别';
+                document.getElementById('recogError').style.display = 'block';
+                return false;
+            }
+        }
+
+        // ========== 单帧重新识别 ==========
+        async function reRecognizeFrame(btn, imageBase64) {
+            if (!aiAvailable) { alert('AI 服务不可用'); return; }
+            btn.disabled = true;
+            btn.textContent = '识别中...';
+            const descDiv = btn.closest('.frame-card').querySelector('.frame-desc');
+            const frameIdx = parseInt(btn.dataset.idx || '-1');
+            try {
+                const resp = await fetch('/api/video/frame/recognize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageBase64 })
+                });
+                const data = await resp.json();
+                if (data.status === 'SUCCESS') {
+                    descDiv.textContent = data.description;
+                    // 更新缓存中的帧描述
+                    if (frameIdx >= 0) {
+                        const vInfo = currentVideoInfo || {};
+                        fetch('/api/video/frame/update-cache', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                frameIndex: frameIdx,
+                                description: data.description,
+                                fingerprint: window.currentFingerprint || '',
+                                fileSize: currentFile ? currentFile.size : 0,
+                                duration: vInfo.duration || '',
+                                resolution: vInfo.resolution || '',
+                                videoCodec: vInfo.videoCodec || '',
+                                frameRate: vInfo.frameRate || ''
+                            })
+                        }).catch(() => {});
+                    }
+                } else {
+                    descDiv.textContent = '识别失败: ' + (data.errorMessage || '未知错误');
+                }
+            } catch (e) {
+                descDiv.textContent = '请求失败: ' + e.message;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '重新识别';
+            }
+        }
+
+        // ========== 视频画面识别 ==========
+        let recogPolling = null;
+        let renderedFrameCount = 0;
+
+        async function doRecognize() {
+            if (!currentFile) { alert('请先选择视频文件'); return; }
+            if (!aiAvailable) { alert('AI 服务不可用'); return; }
+            let force = false;
+            if (document.getElementById('recogResult').style.display !== 'none') {
+                if (!confirm('已有识别结果，是否重新识别？')) return;
+                force = true;
+            }
+
+            const interval = document.getElementById('recogInterval').value;
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            formData.append('interval', interval);
+            const vInfo = currentVideoInfo || {};
+            formData.append('fileSize', currentFile.size);
+            formData.append('duration', vInfo.duration || '');
+            formData.append('resolution', vInfo.resolution || '');
+            formData.append('videoCodec', vInfo.videoCodec || '');
+            formData.append('frameRate', vInfo.frameRate || '');
+            if (force) formData.append('force', 'true');
+
+            document.getElementById('recogLoading').style.display = 'block';
+            document.getElementById('recogResult').style.display = 'none';
+            document.getElementById('recogError').style.display = 'none';
+            document.getElementById('recogBtn').disabled = true;
+            document.getElementById('summaryBtn').disabled = true;
+            recognizeDescriptions = null;
+            renderedFrameCount = 0;
+
+            try {
+                const resp = await fetch('/api/video/recognize', { method: 'POST', body: formData });
+                const data = await resp.json();
+                window.currentFingerprint = data.fingerprint || '';
+                if (data.status === 'PROCESSING') {
+                    pollRecognizeStatus(data.id);
+                } else if (data.status === 'CACHED') {
+                    // 直接渲染缓存结果
+                    renderCachedRecognizeResult(data.data);
+                    document.getElementById('recogLoading').style.display = 'none';
+                    document.getElementById('recogBtn').disabled = false;
+                    document.getElementById('summaryBtn').disabled = false;
+                    sendNotification('画面识别完成', '已加载缓存结果');
+                } else if (data.status === 'FAILED') {
+                    document.getElementById('recogError').textContent = data.errorMessage;
+                    document.getElementById('recogError').style.display = 'block';
+                    document.getElementById('recogLoading').style.display = 'none';
+                    document.getElementById('recogBtn').disabled = false;
+                    document.getElementById('summaryBtn').disabled = false;
+                }
+            } catch (e) {
+                document.getElementById('recogError').textContent = '请求失败: ' + e.message;
+                document.getElementById('recogError').style.display = 'block';
+                document.getElementById('recogLoading').style.display = 'none';
+                document.getElementById('recogBtn').disabled = false;
+                document.getElementById('summaryBtn').disabled = false;
+            }
+        }
+
+        function pollRecognizeStatus(taskId) {
+            renderedFrameCount = 0;
+            const statusTexts = {0:'正在准备...',10:'抽帧完成，开始分析...',30:'AI 分析画面中...',60:'分析进行中...',100:'完成！'};
+            if (recogPolling) clearInterval(recogPolling);
+
+            document.getElementById('recogFrameGrid').innerHTML = '';
+            document.getElementById('recogResult').style.display = 'block';
+
+            recogPolling = setInterval(async () => {
+                try {
+                    const progResp = await fetch('/api/video/recognize/progress/' + taskId);
+                    const progData = await progResp.json();
+                    const p = progData.progress || 0;
+                    let statusMsg = '分析中...';
+                    for (const [threshold, text] of Object.entries(statusTexts).sort((a,b)=>b[0]-a[0])) {
+                        if (p >= parseInt(threshold)) { statusMsg = text; break; }
+                    }
+                    updateProgress('recog', p, statusMsg);
+
+                    // 逐帧渲染新结果
+                    if (progData.frames && progData.frames.length > renderedFrameCount) {
+                        const grid = document.getElementById('recogFrameGrid');
+                        for (let i = renderedFrameCount; i < progData.frames.length; i++) {
+                            const f = progData.frames[i];
+                            const card = document.createElement('div');
+                            card.className = 'frame-card';
+                            card.innerHTML = `<div class="frame-time"><span>${f.time}</span><button class="btn-rerecog" data-img="${f.image}" data-idx="${i}">重新识别</button></div>
+                                <img src="data:image/jpeg;base64,${f.image}" alt="frame" style="cursor:pointer" onclick="openImageModal(this.src)">
+                                <div class="frame-desc">${f.description || '分析中...'}</div>`;
+                            card.querySelector('.btn-rerecog').addEventListener('click', function() {
+                                reRecognizeFrame(this, this.dataset.img);
+                            });
+                            grid.appendChild(card);
+                        }
+                        renderedFrameCount = progData.frames.length;
+                    }
+
+                    if (progData.status === 'SUCCESS') {
+                        clearInterval(recogPolling);
+                        updateProgress('recog', 100, '分析完成！');
+                        document.getElementById('recogLoading').style.display = 'none';
+                        document.getElementById('recogBtn').disabled = false;
+                        document.getElementById('summaryBtn').disabled = false;
+
+                        // 缓存识别结果供摘要使用
+                        if (progData.frames) {
+                            recognizeDescriptions = progData.frames.map(f => f.description).filter(Boolean);
+                        }
+
+                        sendNotification('画面识别完成', '视频画面分析已完成，点击查看结果');
+                    } else if (progData.status === 'FAILED') {
+                        clearInterval(recogPolling);
+                        document.getElementById('recogError').textContent = progData.errorMessage || '识别失败';
+                        document.getElementById('recogError').style.display = 'block';
+                        document.getElementById('recogLoading').style.display = 'none';
+                        document.getElementById('recogBtn').disabled = false;
+                        document.getElementById('summaryBtn').disabled = false;
+                        sendNotification('画面识别失败', progData.errorMessage || '识别失败');
+                    }
+                } catch (e) {
+                    clearInterval(recogPolling);
+                    document.getElementById('recogError').textContent = '轮询失败: ' + e.message;
+                    document.getElementById('recogError').style.display = 'block';
+                    document.getElementById('recogLoading').style.display = 'none';
+                    document.getElementById('recogBtn').disabled = false;
+                    document.getElementById('summaryBtn').disabled = false;
+                }
+            }, 2000);
+        }
+
+        // ========== 视频摘要 ==========
+        let summaryPolling = null;
+
+        async function doSummary() {
+            if (!currentFile) { alert('请先选择视频文件'); return; }
+            if (!aiAvailable) { alert('AI 服务不可用'); return; }
+            let force = false;
+            if (document.getElementById('summaryResult').style.display !== 'none') {
+                if (!confirm('已有摘要结果，是否重新生成？')) return;
+                force = true;
+            }
+
+            document.getElementById('summaryLoading').style.display = 'block';
+            document.getElementById('summaryResult').style.display = 'none';
+            document.getElementById('summaryError').style.display = 'none';
+            document.getElementById('summaryBtn').disabled = true;
+            document.getElementById('recogBtn').disabled = true;
+
+            // 如果已有画面识别结果，直接发送给后端汇总（跳过重复抽帧识别）
+            if (recognizeDescriptions && recognizeDescriptions.length > 0) {
+                try {
+                    const vInfo = currentVideoInfo || {};
+                    const resp = await fetch('/api/video/summary/from-descriptions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            descriptions: recognizeDescriptions,
+                            fingerprint: window.currentFingerprint || '',
+                            fileSize: currentFile.size,
+                            duration: vInfo.duration || '',
+                            resolution: vInfo.resolution || '',
+                            videoCodec: vInfo.videoCodec || '',
+                            frameRate: vInfo.frameRate || ''
+                        })
+                    });
+                    const data = await resp.json();
+                    if (data.status === 'SUCCESS') {
+                        renderSummary(data.summary);
+                        document.getElementById('summaryLoading').style.display = 'none';
+                        document.getElementById('summaryBtn').disabled = false;
+                        document.getElementById('recogBtn').disabled = false;
+                    } else {
+                        document.getElementById('summaryError').textContent = data.errorMessage || '摘要生成失败';
+                        document.getElementById('summaryError').style.display = 'block';
+                        document.getElementById('summaryLoading').style.display = 'none';
+                        document.getElementById('summaryBtn').disabled = false;
+                        document.getElementById('recogBtn').disabled = false;
+                    }
+                    return;
+                } catch (e) {
+                    // 接口不存在则 fallback 到完整流程
+                }
+            }
+
+            // 完整流程：抽帧 + 识别 + 汇总
+            const interval = document.getElementById('recogInterval').value;
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            formData.append('interval', interval);
+            // 传递视频信息用于缓存指纹计算
+            const vInfo = currentVideoInfo || {};
+            formData.append('fileSize', currentFile.size);
+            formData.append('duration', vInfo.duration || '');
+            formData.append('resolution', vInfo.resolution || '');
+            formData.append('videoCodec', vInfo.videoCodec || '');
+            formData.append('frameRate', vInfo.frameRate || '');
+            if (force) formData.append('force', 'true');
+
+            try {
+                const resp = await fetch('/api/video/summary', { method: 'POST', body: formData });
+                const data = await resp.json();
+                window.currentFingerprint = data.fingerprint || '';
+                if (data.status === 'PROCESSING') {
+                    pollSummaryStatus(data.id);
+                } else if (data.status === 'CACHED') {
+                    // 直接渲染缓存结果
+                    const result = JSON.parse(data.data);
+                    renderSummary(result.summary, true);
+                    document.getElementById('summaryLoading').style.display = 'none';
+                    document.getElementById('summaryBtn').disabled = false;
+                    document.getElementById('recogBtn').disabled = false;
+                    sendNotification('视频摘要完成', '已加载缓存结果');
+                } else if (data.status === 'FAILED') {
+                    document.getElementById('summaryError').textContent = data.errorMessage;
+                    document.getElementById('summaryError').style.display = 'block';
+                    document.getElementById('summaryLoading').style.display = 'none';
+                    document.getElementById('summaryBtn').disabled = false;
+                    document.getElementById('recogBtn').disabled = false;
+                }
+            } catch (e) {
+                document.getElementById('summaryError').textContent = '请求失败: ' + e.message;
+                document.getElementById('summaryError').style.display = 'block';
+                document.getElementById('summaryLoading').style.display = 'none';
+                document.getElementById('summaryBtn').disabled = false;
+                document.getElementById('recogBtn').disabled = false;
+            }
+        }
+
+        function pollSummaryStatus(taskId) {
+            const statusTexts = {0:'正在准备...',10:'抽帧完成，开始分析...',30:'AI 分析画面中...',60:'分析进行中...',90:'识别完成，正在汇总成一段话...',100:'完成！'};
+            if (summaryPolling) clearInterval(summaryPolling);
+
+            summaryPolling = setInterval(async () => {
+                try {
+                    const progResp = await fetch('/api/video/recognize/progress/' + taskId);
+                    const progData = await progResp.json();
+                    const p = progData.progress || 0;
+                    let statusMsg = '分析中...';
+                    for (const [threshold, text] of Object.entries(statusTexts).sort((a,b)=>b[0]-a[0])) {
+                        if (p >= parseInt(threshold)) { statusMsg = text; break; }
+                    }
+                    updateProgress('summary', p, statusMsg);
+
+                    if (progData.status === 'SUCCESS') {
+                        clearInterval(summaryPolling);
+                        updateProgress('summary', 100, '分析完成！');
+
+                        const resultResp = await fetch('/api/video/recognize/status/' + taskId);
+                        const data = await resultResp.json();
+                        renderSummary(data.summary);
+
+                        document.getElementById('summaryLoading').style.display = 'none';
+                        document.getElementById('summaryBtn').disabled = false;
+                        document.getElementById('recogBtn').disabled = false;
+                        sendNotification('视频摘要完成', '视频总结已生成，点击查看');
+                    } else if (progData.status === 'FAILED') {
+                        clearInterval(summaryPolling);
+                        document.getElementById('summaryError').textContent = progData.errorMessage || '分析失败';
+                        document.getElementById('summaryError').style.display = 'block';
+                        document.getElementById('summaryLoading').style.display = 'none';
+                        document.getElementById('summaryBtn').disabled = false;
+                        document.getElementById('recogBtn').disabled = false;
+                    }
+                } catch (e) {
+                    clearInterval(summaryPolling);
+                    document.getElementById('summaryError').textContent = '轮询失败: ' + e.message;
+                    document.getElementById('summaryError').style.display = 'block';
+                    document.getElementById('summaryLoading').style.display = 'none';
+                    document.getElementById('summaryBtn').disabled = false;
+                    document.getElementById('recogBtn').disabled = false;
+                }
+            }, 2000);
+        }
+
+        function renderSummary(summary, fromCache) {
+            const text = (summary || '').trim() || '（摘要生成失败，请重试）';
+            const safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const cacheTag = fromCache ? ' <span class="badge bg-info" style="font-size:0.7rem;vertical-align:middle">缓存</span>' : '';
+            document.getElementById('summaryResult').innerHTML =
+                '<div class="card"><div class="card-body">'
+                + '<h6 class="card-title mb-3">视频内容摘要' + cacheTag + '</h6>'
+                + '<p class="card-text mb-0" style="white-space:pre-wrap; line-height:1.9; font-size:0.95rem">'
+                + safe + '</p>'
+                + '</div></div>';
+            document.getElementById('summaryResult').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

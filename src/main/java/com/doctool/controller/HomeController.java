@@ -48,4 +48,14 @@ public class HomeController {
     public String animToVideoPage() {
         return "anim-to-video";
     }
+
+    @GetMapping("/video")
+    public String videoPage() {
+        return "video";
+    }
+
+    @GetMapping("/video-convert")
+    public String videoConvertPage() {
+        return "video-convert";
+    }
 }

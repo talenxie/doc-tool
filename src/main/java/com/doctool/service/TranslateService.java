@@ -5,8 +5,9 @@ import com.doctool.model.TaskRecord;
 import com.doctool.util.DocxUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -26,14 +27,16 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class TranslateService {
 
+    private static final Logger log = LoggerFactory.getLogger(TranslateService.class);
+
     private final TaskRecordMapper taskRecordMapper;
+
+    public TranslateService(TaskRecordMapper taskRecordMapper) {
+        this.taskRecordMapper = taskRecordMapper;
+    }
 
     @Value("${translate.api-url:https://translate.googleapis.com/translate_a/single}")
     private String apiUrl;
@@ -166,17 +169,21 @@ public class TranslateService {
     }
 
     private String callTranslateApi(String text) throws Exception {
-        int maxRetries = 5;
+        int maxRetries = 3;
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 return useMicrosoft() ? doCallMsTranslateApi(text) : doCallGoogleTranslateApi(text);
             } catch (RuntimeException e) {
                 if (e.getMessage().contains("429") && attempt < maxRetries) {
-                    long baseWait = attempt * 3000L;
-                    long jitter = RANDOM.nextLong(1001); // 0~1000ms 随机抖动
+                    long baseWait = attempt * 2000L;
+                    long jitter = RANDOM.nextLong(1001);
                     long wait = baseWait + jitter;
                     log.warn("翻译API限流，等待 {}ms 后重试 ({}/{})", wait, attempt, maxRetries);
                     try { Thread.sleep(wait); } catch (InterruptedException ignored) {}
+                } else if (e.getMessage().contains("429")) {
+                    // Google 限流后降级到 MyMemory
+                    log.warn("Google翻译持续限流，降级到 MyMemory");
+                    return doCallMyMemoryTranslateApi(text);
                 } else {
                     throw e;
                 }
@@ -205,6 +212,35 @@ public class TranslateService {
         }
 
         return parseTranslateResponse(response.body(), text);
+    }
+
+    private String doCallMyMemoryTranslateApi(String text) throws Exception {
+        String encodedText = URLEncoder.encode(text, StandardCharsets.UTF_8);
+        String url = "https://api.mymemory.translated.net/get?q=" + encodedText + "&langpair=en|zh-CN";
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("User-Agent", "Mozilla/5.0")
+                .GET()
+                .timeout(Duration.ofSeconds(30))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request,
+                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+
+        if (response.statusCode() != 200) {
+            log.error("MyMemory翻译API返回状态码: {}", response.statusCode());
+            throw new RuntimeException("翻译API返回状态码: " + response.statusCode());
+        }
+
+        // {"responseData":{"translatedText":"翻译文本"},"responseStatus":200}
+        String body = response.body();
+        int marker = body.indexOf("\"translatedText\":\"");
+        if (marker < 0) return text;
+        int start = marker + "\"translatedText\":\"".length();
+        int end = body.indexOf("\"", start);
+        if (end < 0) return text;
+        return body.substring(start, end).replace("\\n", "\n");
     }
 
     private String doCallMsTranslateApi(String text) throws Exception {

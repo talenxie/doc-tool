@@ -13,7 +13,7 @@ target/
 data/
 
 # 生产环境配置
-src/main/resources/application-prod.yml
+src/main/resources/application-dev.yml
 
 # 临时测试文件
 test.docx
