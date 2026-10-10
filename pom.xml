@@ -19,6 +19,8 @@
 
     <properties>
         <java.version>17</java.version>
+        <!-- Lombok >= 1.18.40 required for JDK 25 (fixes ExceptionInInitializerError / TypeTag :: UNKNOWN) -->
+        <lombok.version>1.18.48</lombok.version>
     </properties>
 
     <packaging>war</packaging>
@@ -139,7 +141,7 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
-                            <version>1.18.32</version>
+                            <version>${lombok.version}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
